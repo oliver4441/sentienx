@@ -1,21 +1,22 @@
 /**
  * Deriv API Client Library
  *
- * Provides three main classes:
- *  - DerivAuth:  OAuth 2.0 PKCE flow (code verifier/challenge, token exchange, refresh)
- *  - DerivWS:    WebSocket connection management (connect, subscribe, send/receive)
- *  - DerivREST:  REST API wrapper for account management
+ * Provides:
+ *  - DerivAuth:  OAuth 2.0 PKCE flow helpers
+ *  - DerivWS:    WebSocket connection with OTP-based authentication
+ *  - DerivREST:  REST API wrapper
+ *
+ * WebSocket connection flow:
+ *   1. Connect to public WS for ticks/market data (no auth)
+ *   2. For trading: call getAuthenticatedWsUrl() first, then connect to OTP URL
  *
  * @see https://developers.deriv.com/
  */
 
-import { DERIV_CONFIG } from "./constants"
+import { DERIV_CONFIG, getAuthenticatedWsUrl } from "./constants"
 
 import type {
   DerivOAuthTokenResponse,
-  DerivPKCEParams,
-  DerivWSRequest,
-  DerivWSResponse,
   DerivAccountInfo,
   DerivPortfolioResponse,
   DerivTick,
@@ -24,7 +25,7 @@ import type {
   DerivBuy,
 } from "@/types/deriv"
 
-// ─── PKCE Helper Functions ───────────────────────────────────────────────────
+// ─── PKCE Helpers ─────────────────────────────────────────────────────────
 
 function base64UrlEncode(buffer: Uint8Array): string {
   return btoa(String.fromCharCode(...buffer))
@@ -52,7 +53,7 @@ function generateState(): string {
   return Array.from(array, (b) => b.toString(16).padStart(2, "0")).join("")
 }
 
-// ─── DerivAuth ───────────────────────────────────────────────────────────────
+// ─── DerivAuth ─────────────────────────────────────────────────────────────
 
 export class DerivAuth {
   private accessToken: string | null = null
@@ -60,23 +61,17 @@ export class DerivAuth {
   private tokenExpiry: number = 0
 
   constructor() {
-    // Restore tokens from cookies if available
     if (typeof window !== "undefined") {
       this.accessToken = this.getCookie("deriv_access_token")
       this.refreshToken = this.getCookie("deriv_refresh_token")
     }
   }
 
-  /**
-   * Generate PKCE parameters and return the OAuth authorization URL.
-   * The code_verifier and state are stored in sessionStorage for the callback.
-   */
   async getAuthorizationUrl(): Promise<string> {
     const codeVerifier = generateCodeVerifier()
     const codeChallenge = await generateCodeChallenge(codeVerifier)
     const state = generateState()
 
-    // Store PKCE params for the callback
     if (typeof window !== "undefined") {
       sessionStorage.setItem("deriv_code_verifier", codeVerifier)
       sessionStorage.setItem("deriv_oauth_state", state)
@@ -92,7 +87,6 @@ export class DerivAuth {
       state: state,
     })
 
-    // Append affiliate token if available (Deriv uses "t" param)
     if (DERIV_CONFIG.affiliateToken) {
       params.append("t", DERIV_CONFIG.affiliateToken)
     }
@@ -100,11 +94,10 @@ export class DerivAuth {
     return `${DERIV_CONFIG.oauthUrl}?${params.toString()}`
   }
 
-  /**
-   * Exchange an authorization code for access/refresh tokens.
-   * Called by the OAuth callback route handler.
-   */
-  async exchangeCode(code: string, codeVerifier: string): Promise<DerivOAuthTokenResponse> {
+  async exchangeCode(
+    code: string,
+    codeVerifier: string,
+  ): Promise<DerivOAuthTokenResponse> {
     const body = new URLSearchParams({
       grant_type: "authorization_code",
       client_id: DERIV_CONFIG.appId,
@@ -128,13 +121,9 @@ export class DerivAuth {
     this.accessToken = data.access_token
     this.refreshToken = data.refresh_token || null
     this.tokenExpiry = Date.now() + data.expires_in * 1000
-
     return data
   }
 
-  /**
-   * Refresh the access token using the stored refresh token.
-   */
   async refreshAccessToken(): Promise<DerivOAuthTokenResponse> {
     if (!this.refreshToken) {
       throw new Error("No refresh token available")
@@ -161,13 +150,9 @@ export class DerivAuth {
     this.accessToken = data.access_token
     this.refreshToken = data.refresh_token || this.refreshToken
     this.tokenExpiry = Date.now() + data.expires_in * 1000
-
     return data
   }
 
-  /**
-   * Get the current access token, refreshing if expired.
-   */
   async getAccessToken(): Promise<string | null> {
     if (this.accessToken && Date.now() < this.tokenExpiry) {
       return this.accessToken
@@ -183,16 +168,10 @@ export class DerivAuth {
     return null
   }
 
-  /**
-   * Check if the user has a valid token.
-   */
   isAuthenticated(): boolean {
     return !!this.accessToken && Date.now() < this.tokenExpiry
   }
 
-  /**
-   * Clear all tokens (logout).
-   */
   clearTokens(): void {
     this.accessToken = null
     this.refreshToken = null
@@ -209,7 +188,7 @@ export class DerivAuth {
   }
 }
 
-// ─── DerivWS ─────────────────────────────────────────────────────────────────
+// ─── DerivWS ───────────────────────────────────────────────────────────────
 
 export type DerivWSCallback<T = unknown> = (data: T) => void
 
@@ -217,21 +196,30 @@ export class DerivWS {
   private ws: WebSocket | null = null
   private requestId: number = 0
   private subscriptions: Map<string, DerivWSCallback> = new Map()
-  private pendingRequests: Map<number, { resolve: (value: unknown) => void; reject: (reason: unknown) => void }> = new Map()
+  private pendingRequests: Map<
+    number,
+    {
+      resolve: (value: unknown) => void
+      reject: (reason: unknown) => void
+    }
+  > = new Map()
   private reconnectAttempts: number = 0
   private maxReconnectAttempts: number = 5
   private reconnectDelay: number = 1000
   private url: string
   private accessToken: string | null = null
+  private authorized: boolean = false
 
   constructor(url?: string) {
     this.url = url || DERIV_CONFIG.wsPublic
   }
 
   /**
-   * Connect to the Deriv WebSocket server.
+   * Connect to Deriv WebSocket.
+   * For public (tick) data: connect() with no token.
+   * For authenticated (trading): pass the OTP URL directly.
    */
-  connect(accessToken?: string): Promise<void> {
+  connect(wsUrl?: string, accessToken?: string): Promise<void> {
     return new Promise((resolve, reject) => {
       if (this.ws?.readyState === WebSocket.OPEN) {
         resolve()
@@ -239,23 +227,16 @@ export class DerivWS {
       }
 
       this.accessToken = accessToken || null
+      this.authorized = false
 
-      // Build URL with app_id
-      const wsUrl = new URL(this.url)
-      wsUrl.searchParams.set("app_id", DERIV_CONFIG.appId)
-      if (this.accessToken) {
-        wsUrl.searchParams.set("l", "en")
-        wsUrl.searchParams.set("brand", "deriv")
-      }
+      const targetUrl = wsUrl || this.url
+      const parsedUrl = new URL(targetUrl)
+      parsedUrl.searchParams.set("app_id", String(DERIV_CONFIG.appId))
 
-      this.ws = new WebSocket(wsUrl.toString())
+      this.ws = new WebSocket(parsedUrl.toString())
 
       this.ws.onopen = () => {
         this.reconnectAttempts = 0
-        // Authorize if we have a token
-        if (this.accessToken) {
-          this.send({ authorize: this.accessToken })
-        }
         resolve()
       }
 
@@ -279,22 +260,40 @@ export class DerivWS {
   }
 
   /**
-   * Disconnect from the WebSocket server.
+   * Authorize the WebSocket session with an access token.
+   * Must be called after connecting, before making trading requests.
    */
+  authorize(accessToken: string): Promise<DerivAccountInfo> {
+    this.accessToken = accessToken
+    this.authorized = true
+    return this.send<DerivAccountInfo>({ authorize: accessToken })
+  }
+
+  /**
+   * Connect using an authenticated OTP URL.
+   * Use this for trading (proposals, buy, portfolio).
+   */
+  async connectAuthenticated(
+    accountId: string,
+    accessToken: string,
+  ): Promise<DerivAccountInfo> {
+    const wsUrl = await getAuthenticatedWsUrl(accountId, accessToken, DERIV_CONFIG.appId)
+    await this.connect(wsUrl)
+    return this.authorize(accessToken)
+  }
+
   disconnect(): void {
-    this.reconnectAttempts = this.maxReconnectAttempts // Prevent auto-reconnect
+    this.reconnectAttempts = this.maxReconnectAttempts
     if (this.ws) {
       this.ws.close()
       this.ws = null
     }
     this.subscriptions.clear()
     this.pendingRequests.clear()
+    this.authorized = false
   }
 
-  /**
-   * Send a request and wait for the response.
-   */
-  send<T = unknown>(request: DerivWSRequest): Promise<T> {
+  send<T = unknown>(request: Record<string, unknown>): Promise<T> {
     return new Promise((resolve, reject) => {
       if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
         reject(new Error("WebSocket is not connected"))
@@ -311,7 +310,6 @@ export class DerivWS {
 
       this.ws.send(JSON.stringify(message))
 
-      // Timeout after 30 seconds
       setTimeout(() => {
         if (this.pendingRequests.has(reqId)) {
           this.pendingRequests.delete(reqId)
@@ -321,19 +319,24 @@ export class DerivWS {
     })
   }
 
-  /**
-   * Subscribe to a stream with a callback.
-   */
-  subscribe<T = unknown>(request: DerivWSRequest, callback: DerivWSCallback<T>): Promise<string> {
+  subscribe<T = unknown>(
+    request: Record<string, unknown>,
+    callback: DerivWSCallback<T>,
+  ): Promise<string> {
     return new Promise((resolve, reject) => {
       const handler = (data: unknown) => {
         callback(data as T)
       }
 
-      this.send<{ subscription: { id: string } } & Record<string, unknown>>(request)
+      this.send<{ subscription: { id: string } } & Record<string, unknown>>(
+        request,
+      )
         .then((response) => {
           if (response.subscription?.id) {
-            this.subscriptions.set(response.subscription.id, handler as DerivWSCallback)
+            this.subscriptions.set(
+              response.subscription.id,
+              handler as DerivWSCallback,
+            )
             resolve(response.subscription.id)
           } else {
             reject(new Error("No subscription ID in response"))
@@ -343,31 +346,27 @@ export class DerivWS {
     })
   }
 
-  /**
-   * Unsubscribe from a stream by subscription ID.
-   */
   async unsubscribe(subscriptionId: string): Promise<void> {
     await this.send({ forget: subscriptionId })
     this.subscriptions.delete(subscriptionId)
   }
 
-  /**
-   * Subscribe to tick stream for a symbol.
-   */
-  subscribeTicks(symbol: string, callback: DerivWSCallback<DerivTick>): Promise<string> {
+  subscribeTicks(
+    symbol: string,
+    callback: DerivWSCallback<DerivTick>,
+  ): Promise<string> {
     return this.subscribe<DerivTick>({ ticks: symbol, subscribe: 1 }, callback)
   }
 
-  /**
-   * Subscribe to portfolio updates.
-   */
-  subscribePortfolio(callback: DerivWSCallback<DerivPortfolioResponse>): Promise<string> {
-    return this.subscribe<DerivPortfolioResponse>({ portfolio: 1, subscribe: 1 }, callback)
+  subscribePortfolio(
+    callback: DerivWSCallback<DerivPortfolioResponse>,
+  ): Promise<string> {
+    return this.subscribe<DerivPortfolioResponse>(
+      { portfolio: 1, subscribe: 1 },
+      callback,
+    )
   }
 
-  /**
-   * Get active symbols (available markets).
-   */
   async getActiveSymbols(): Promise<DerivActiveSymbol[]> {
     const response = await this.send<{ active_symbols: DerivActiveSymbol[] }>({
       active_symbols: "brief",
@@ -376,61 +375,43 @@ export class DerivWS {
     return response.active_symbols
   }
 
-  /**
-   * Request a price proposal.
-   */
-  async getProposal(params: {
-    contract_type: string
-    symbol: string
-    duration: number
-    duration_unit: string
-    amount: number
-    basis: string
-    currency?: string
-  }): Promise<DerivProposal> {
-    return this.send<DerivProposal>({
-      proposal: 1,
-      ...params,
-      subscribe: 1,
-    })
+  getAuthorized(): boolean {
+    return this.authorized
   }
 
-  /**
-   * Buy a contract.
-   */
-  async buyContract(proposalId: string, price: number): Promise<DerivBuy> {
-    return this.send<DerivBuy>({
-      buy: proposalId,
-      price: price,
-    })
+  getAccessToken(): string | null {
+    return this.accessToken
   }
 
-  /**
-   * Authorize the WebSocket connection with an access token.
-   */
-  authorize(token: string): Promise<DerivAccountInfo> {
-    return this.send<DerivAccountInfo>({ authorize: token })
-  }
+  // ─── Private ────────────────────────────────────────────────────────────
 
-  // ─── Private Methods ─────────────────────────────────────────────────────
-
-  private handleMessage(data: DerivWSResponse): void {
+  private handleMessage(data: Record<string, unknown>): void {
     // Handle subscription callbacks
-    if (data.subscription?.id) {
-      const callback = this.subscriptions.get(data.subscription.id)
+    if (
+      data.subscription &&
+      typeof data.subscription === "object" &&
+      "id" in data.subscription &&
+      typeof (data.subscription as { id: unknown }).id === "string"
+    ) {
+      const subId = (data.subscription as { id: string }).id;
+      const callback = this.subscriptions.get(subId);
       if (callback) {
-        callback(data)
-        return
+        callback(data);
+        return;
       }
     }
 
     // Handle pending request responses
-    if (data.req_id) {
+    if (data.req_id && typeof data.req_id === "number") {
       const pending = this.pendingRequests.get(data.req_id)
       if (pending) {
         this.pendingRequests.delete(data.req_id)
         if (data.error) {
-          pending.reject(new Error(`${data.error.code}: ${data.error.message}`))
+          pending.reject(
+            new Error(
+              `${(data.error as Record<string, unknown>).code}: ${(data.error as Record<string, unknown>).message}`,
+            ),
+          )
         } else {
           pending.resolve(data)
         }
@@ -449,14 +430,12 @@ export class DerivWS {
     const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1)
 
     setTimeout(() => {
-      this.connect(this.accessToken || undefined).catch(() => {
-        // Reconnect will retry via onclose handler
-      })
+      this.connect(this.accessToken || undefined).catch(() => {})
     }, delay)
   }
 }
 
-// ─── DerivREST ───────────────────────────────────────────────────────────────
+// ─── DerivREST ─────────────────────────────────────────────────────────────
 
 export class DerivREST {
   private accessToken: string | null = null
@@ -469,71 +448,49 @@ export class DerivREST {
     this.accessToken = token
   }
 
-  /**
-   * Make an authenticated REST API request.
-   */
-  private async request<T>(endpoint: string, body: Record<string, unknown> = {}): Promise<T> {
-    const response = await fetch(`${DERIV_CONFIG.restBase}${endpoint}`, {
+  private async request<T>(
+    endpoint: string,
+    body: Record<string, unknown> = {},
+  ): Promise<T> {
+    const response = await fetch(`${DERIV_CONFIG.apiBase}${endpoint}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(this.accessToken ? { Authorization: `Bearer ${this.accessToken}` } : {}),
+        ...(this.accessToken
+          ? { Authorization: `Bearer ${this.accessToken}` }
+          : {}),
+        "Deriv-App-ID": String(DERIV_CONFIG.appId),
       },
-      body: JSON.stringify({ ...body, app_id: DERIV_CONFIG.appId }),
+      body: JSON.stringify({ ...body }),
     })
 
     if (!response.ok) {
-      throw new Error(`REST request failed: ${response.status} ${response.statusText}`)
+      throw new Error(
+        `REST request failed: ${response.status} ${response.statusText}`,
+      )
     }
 
     const data = await response.json()
 
     if (data.error) {
-      throw new Error(`${data.error.code}: ${data.error.message}`)
+      throw new Error(
+        `${data.error.code}: ${data.error.message}`,
+      )
     }
 
     return data as T
   }
 
-  /**
-   * Get account information for the authorized user.
-   */
   async getAccountInfo(): Promise<DerivAccountInfo> {
-    return this.request<DerivAccountInfo>("/authorize", {
+    return this.request<DerivAccountInfo>("/trading/v1/options/authorize", {
       authorize: this.accessToken || "",
     })
   }
 
-  /**
-   * Get account balance.
-   */
   async getBalance(): Promise<{ balance: { balance: number; currency: string } }> {
-    return this.request("/balance", { balance: 1, subscribe: 0 })
-  }
-
-  /**
-   * Get portfolio (open positions).
-   */
-  async getPortfolio(): Promise<DerivPortfolioResponse> {
-    return this.request<DerivPortfolioResponse>("/portfolio", { portfolio: 1 })
-  }
-
-  /**
-   * Get transaction history.
-   */
-  async getTransactionHistory(params: {
-    limit?: number
-    offset?: number
-  } = {}): Promise<{ transaction_history: { transactions: unknown[] } }> {
-    return this.request("/transaction_history", {
-      transaction_history: 1,
-      ...params,
+    return this.request("/trading/v1/options/balance", {
+      balance: 1,
+      subscribe: 0,
     })
   }
 }
-
-// ─── Singleton Instances ─────────────────────────────────────────────────────
-
-export const derivAuth = new DerivAuth()
-export const derivWS = new DerivWS()
-export const derivREST = new DerivREST()
