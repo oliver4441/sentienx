@@ -1,0 +1,148 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ═══════════════════════════════════════════════════════════════
+   SENTIENX — Design System
+   Deriv Trading SaaS Platform
+   ═══════════════════════════════════════════════════════════════ */
+
+@layer base {
+  :root {
+    /* Background layers */
+    --sentienx-bg: #070709;
+    --sentienx-surface: #0f0f14;
+    --sentienx-card: #16161d;
+    --sentienx-border: rgba(255, 255, 255, 0.06);
+    --sentienx-border-hover: rgba(255, 255, 255, 0.12);
+
+    /* Text */
+    --sentienx-text: #f4f4f5;
+    --sentienx-text-muted: #a1a1aa;
+    --sentienx-text-dim: #71717a;
+
+    /* Accent — Brand indigo */
+    --sentienx-brand: #6366f1;
+    --sentienx-brand-light: #818cf8;
+    --sentienx-brand-dark: #4f46e5;
+
+    /* Accent — Bull (green) */
+    --sentienx-bull: #00e676;
+    --sentienx-bull-dim: #00c853;
+    --sentienx-bull-bg: rgba(0, 230, 118, 0.1);
+
+    /* Accent — Bear (red) */
+    --sentienx-bear: #ff1744;
+    --sentienx-bear-dim: #d50000;
+    --sentienx-bear-bg: rgba(255, 23, 68, 0.1);
+  }
+
+  * {
+    border-color: var(--sentienx-border);
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-[#070709] text-[#f4f4f5] antialiased;
+    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  ::selection {
+    background: rgba(99, 102, 241, 0.3);
+    color: #fff;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply rounded-2xl border border-white/[0.06];
+    background: rgba(255, 255, 255, 0.02);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  .glass-card-hover:hover {
+    @apply border-white/[0.12];
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .stat-card {
+    @apply rounded-2xl border border-white/[0.06] p-6;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.03) 0%,
+      rgba(255, 255, 255, 0.01) 100%
+    );
+    transition: border-color 0.2s ease;
+  }
+
+  .stat-card:hover {
+    @apply border-white/[0.12];
+  }
+
+  .focus-ring:focus-visible {
+    @apply outline-2 outline-offset-2 outline-indigo-500;
+  }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+  }
+}
+
+@layer utilities {
+  .text-bull {
+    color: #00e676;
+  }
+
+  .text-bear {
+    color: #ff1744;
+  }
+
+  .text-brand {
+    color: #6366f1;
+  }
+
+  .bg-bull {
+    background-color: rgba(0, 230, 118, 0.1);
+  }
+
+  .bg-bear {
+    background-color: rgba(255, 23, 68, 0.1);
+  }
+
+  .bg-brand {
+    background-color: rgba(99, 102, 241, 0.1);
+  }
+
+  .border-bull {
+    border-color: rgba(0, 230, 118, 0.2);
+  }
+
+  .border-bear {
+    border-color: rgba(255, 23, 68, 0.2);
+  }
+}
