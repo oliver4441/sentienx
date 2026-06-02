@@ -88,13 +88,13 @@ export class DerivAuth {
       response_type: "code",
       scope: "read trade payments admin",
       code_challenge: codeChallenge,
-      code_method: "S256",
+      code_challenge_method: "S256",
       state: state,
     })
 
-    // Append affiliate token if available
+    // Append affiliate token if available (Deriv uses "t" param)
     if (DERIV_CONFIG.affiliateToken) {
-      params.append("affiliate_token", DERIV_CONFIG.affiliateToken)
+      params.append("t", DERIV_CONFIG.affiliateToken)
     }
 
     return `${DERIV_CONFIG.oauthUrl}?${params.toString()}`

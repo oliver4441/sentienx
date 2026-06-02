@@ -5,10 +5,11 @@
  * Register your app at https://api.deriv.com/ to get an app ID.
  */
 export const DERIV_CONFIG = {
-  appId: process.env.DERIV_APP_ID || "",
+  appId: process.env.DERIV_APP_ID || "113241",
   affiliateToken: process.env.DERIV_AFFILIATE_TOKEN || "",
   redirectUri:
     process.env.DERIV_REDIRECT_URI ||
+    process.env.NEXT_PUBLIC_DERIV_REDIRECT_URI ||
     "http://localhost:3000/api/auth/deriv/callback",
   oauthUrl: "https://auth.deriv.com/oauth2/auth",
   tokenUrl: "https://auth.deriv.com/oauth2/token",

@@ -166,15 +166,17 @@ export function useDerivWS(options: UseDerivWSOptions = {}): UseDerivWSReturn {
     [connectionStatus]
   )
 
-  // Auto-connect when authenticated
+  // Auto-connect with user-specific WS URL when authenticated
   useEffect(() => {
     if (autoConnect && isAuthenticated && accessToken) {
-      connect()
+      // Use demo WS URL for authenticated connections (supports authorize, proposal, buy)
+      // The public WS URL only supports tick streaming and active symbols
+      connect(DERIV_CONFIG.wsDemo);
     }
 
     return () => {
-      disconnect()
-    }
+      disconnect();
+    };
   }, [autoConnect, isAuthenticated, accessToken])
 
   return {

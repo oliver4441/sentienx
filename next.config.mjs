@@ -2,7 +2,12 @@
 const nextConfig = {
   // See https://lucide.dev/guide/packages/lucide-react#nextjs-example
   transpilePackages: ["lucide-react"],
-  // Disable lint during build (lint issues are auto-formatting, not code errors)
+  // Fix Tailwind v3 + Next.js 15.2 prerender crash (entryCSSFiles)
+  experimental: {
+    // Disable turbopack to avoid native binary issues on Render
+    turbo: {},
+  },
+  // Disable lint during build
   eslint: {
     ignoreDuringBuilds: true,
   },

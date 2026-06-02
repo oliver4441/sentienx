@@ -12,8 +12,16 @@ services:
         value: "113241"
       - key: DERIV_REDIRECT_URI
         value: https://sentienx.onrender.com/api/auth/deriv/callback
+      - key: DERIV_AFFILIATE_TOKEN
+        sync: false
       - key: DERIV_MARKUP
         value: "0"
+      - key: NEXT_PUBLIC_DERIV_APP_ID
+        value: "113241"
+      - key: NEXT_PUBLIC_DERIV_AFFILIATE_TOKEN
+        sync: false
+      - key: NEXT_PUBLIC_DERIV_REDIRECT_URI
+        value: https://sentienx.onrender.com/api/auth/deriv/callback
       - key: NODE_ENV
         value: production
       - key: NPM_CONFIG_PRODUCTION
