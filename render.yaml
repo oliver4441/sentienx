@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: sentienx
+    runtime: node
+    plan: starter
+    buildCommand: pnpm install && pnpm build
+    startCommand: pnpm start
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: DERIV_APP_ID
+        value: "113241"
+      - key: DERIV_REDIRECT_URI
+        value: https://sentienx.onrender.com/api/auth/deriv/callback
+      - key: DERIV_MARKUP
+        value: "0"
+      - key: NODE_ENV
+        value: production
+      - key: NPM_CONFIG_PRODUCTION
+        value: "false"
