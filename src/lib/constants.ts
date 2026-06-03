@@ -24,32 +24,6 @@ export const DERIV_CONFIG = {
   markup: parseFloat(process.env.DERIV_MARKUP || "0"),
 }
 
-/**
- * Get an authenticated WebSocket URL via the OTP endpoint.
- * Must be called from the server (needs Bearer token).
- */
-export async function getAuthenticatedWsUrl(
-  accountId: string,
-  accessToken: string,
-  appAppId?: string,
-): Promise<string> {
-  const res = await fetch(
-    `${DERIV_CONFIG.apiBase}/trading/v1/options/accounts/${accountId}/otp`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Deriv-App-ID": String(appAppId || DERIV_CONFIG.appId),
-      },
-    },
-  )
-  if (!res.ok) {
-    throw new Error(`OTP request failed: ${res.status} ${res.statusText}`)
-  }
-  const data = await res.json()
-  return data.data.url
-}
-
 export const SENTIENX_CONFIG = {
   name: "Sentienx",
   description: "Deriv Trading SaaS Platform",

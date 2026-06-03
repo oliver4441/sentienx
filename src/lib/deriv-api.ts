@@ -13,7 +13,7 @@
  * @see https://developers.deriv.com/
  */
 
-import { DERIV_CONFIG, getAuthenticatedWsUrl } from "./constants"
+import { DERIV_CONFIG } from "./constants"
 
 import type {
   DerivOAuthTokenResponse,
@@ -277,7 +277,21 @@ export class DerivWS {
     accountId: string,
     accessToken: string,
   ): Promise<DerivAccountInfo> {
-    const wsUrl = await getAuthenticatedWsUrl(accountId, accessToken, DERIV_CONFIG.appId)
+    const otpRes = await fetch(
+      `${DERIV_CONFIG.apiBase}/trading/v1/options/accounts/${accountId}/otp`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Deriv-App-ID": String(DERIV_CONFIG.appId),
+        },
+      },
+    )
+    if (!otpRes.ok) {
+      throw new Error(`OTP request failed: ${otpRes.status}`)
+    }
+    const otpData = await otpRes.json()
+    const wsUrl = otpData.data.url
     await this.connect(wsUrl)
     return this.authorize(accessToken)
   }
