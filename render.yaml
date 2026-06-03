@@ -3,8 +3,8 @@ services:
     name: sentienx
     runtime: node
     plan: starter
-    buildCommand: pnpm install --no-frozen-lockfile && pnpm build
-    startCommand: pnpm start
+    buildCommand: npm install && npm run build
+    startCommand: npm start
     healthCheckPath: /
     autoDeploy: true
     envVars:
