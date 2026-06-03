@@ -1,3 +1,4 @@
+// Force cache invalidation - build attempt 4
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // See https://lucide.dev/guide/packages/lucide-react#nextjs-example
