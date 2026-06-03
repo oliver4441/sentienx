@@ -118,30 +118,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   /**
-   * Set the access token (used after OAuth callback).
-   * Re-fetches session to get account info.
+   * Set the access token (used after OAuth callback)
    */
-  const setAccessToken = useCallback(async (token: string) => {
+  const setAccessToken = useCallback((token: string) => {
     setState((prev) => ({
       ...prev,
       isAuthenticated: true,
       accessToken: token,
-    }));
-    // Re-fetch session to populate account info
-    try {
-      const response = await fetch("/api/auth/deriv/session");
-      if (response.ok) {
-        const data = await response.json();
-        if (data.accountInfo) {
-          setState((prev) => ({
-            ...prev,
-            accountInfo: data.accountInfo,
-          }));
-        }
-      }
-    } catch {
-      // Account info will load on next page mount
-    }
+    }))
   }, [])
 
   return (

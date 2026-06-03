@@ -388,16 +388,13 @@ export class DerivWS {
   private handleMessage(data: Record<string, unknown>): void {
     // Handle subscription callbacks
     if (
-      data.subscription &&
-      typeof data.subscription === "object" &&
-      "id" in data.subscription &&
-      typeof (data.subscription as { id: unknown }).id === "string"
+      data.subscription?.id &&
+      typeof data.subscription.id === "string"
     ) {
-      const subId = (data.subscription as { id: string }).id;
-      const callback = this.subscriptions.get(subId);
+      const callback = this.subscriptions.get(data.subscription.id)
       if (callback) {
-        callback(data);
-        return;
+        callback(data)
+        return
       }
     }
 
