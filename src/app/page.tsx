@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LandingStats } from "./stats";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Sentienx — Deriv Trading Platform",
   description:
