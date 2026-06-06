@@ -96,9 +96,13 @@ function buildAuthUrl(codeChallenge: string, state: string, isRegistration: bool
     params.append("prompt", "registration");
   }
 
-  // Affiliate tracking — critical for commission earnings
+  // Partner referral tracking — earns commission on referred users
+  // The `t` parameter is the `sidc` value from your Deriv Partners referral link
   if (DERIV_CONFIG.affiliateToken) {
     params.append("t", DERIV_CONFIG.affiliateToken);
+    params.append("utm_campaign", "dynamicworks");
+    params.append("utm_medium", "affiliate");
+    params.append("utm_source", "CU140274");
   }
 
   return `${DERIV_CONFIG.oauthUrl}?${params.toString()}`;
