@@ -401,11 +401,12 @@ export class DerivWS {
 
   private handleMessage(data: Record<string, unknown>): void {
     // Handle subscription callbacks
+    const sub = data.subscription as Record<string, unknown> | undefined
     if (
-      data.subscription?.id &&
-      typeof data.subscription.id === "string"
+      sub?.id &&
+      typeof sub.id === "string"
     ) {
-      const callback = this.subscriptions.get(data.subscription.id)
+      const callback = this.subscriptions.get(sub.id)
       if (callback) {
         callback(data)
         return
