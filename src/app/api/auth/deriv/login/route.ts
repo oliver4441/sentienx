@@ -50,8 +50,12 @@ export async function GET(request: NextRequest) {
     b.toString(16).padStart(2, "0")
   ).join("");
 
+  // Check if this is a registration request
+  const action = request.nextUrl.searchParams.get("action");
+  const isRegistration = action === "registration";
+
   // Build the authorization URL per Deriv docs
-  const authUrl = buildAuthUrl(codeChallenge, state);
+  const authUrl = buildAuthUrl(codeChallenge, state, isRegistration);
 
   // Return the URL to the client (client-side redirect)
   const response = NextResponse.json({ authorizationUrl: authUrl });
@@ -76,7 +80,7 @@ export async function GET(request: NextRequest) {
   return response;
 }
 
-function buildAuthUrl(codeChallenge: string, state: string): string {
+function buildAuthUrl(codeChallenge: string, state: string, isRegistration: boolean): string {
   const params = new URLSearchParams({
     app_id: String(DERIV_CONFIG.appId),
     redirect_uri: DERIV_CONFIG.redirectUri,
@@ -86,6 +90,11 @@ function buildAuthUrl(codeChallenge: string, state: string): string {
     code_challenge_method: "S256",
     state: state,
   });
+
+  // Show sign-up form instead of login for new users
+  if (isRegistration) {
+    params.append("prompt", "registration");
+  }
 
   // Affiliate tracking — critical for commission earnings
   if (DERIV_CONFIG.affiliateToken) {

@@ -221,14 +221,16 @@ export function useDerivWS(options: UseDerivWSOptions = {}): UseDerivWSReturn {
         if (errMsg.includes("unauthorized") || errMsg.includes("invalid_token")) {
           // Try token refresh
           const refreshed = await refreshSession();
-          if (refreshed && wsRef.current) {
+          if (refreshed && wsRef.current && accessToken) {
+            // Re-authorize the WS connection with the new token
+            await wsRef.current.authorize(accessToken);
             return await wsRef.current.send(request);
           }
         }
         throw err;
       }
     },
-    [connectionStatus, refreshSession]
+    [connectionStatus, refreshSession, accessToken]
   );
 
   // Auto-connect when authenticated

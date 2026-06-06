@@ -19,9 +19,16 @@ export default function RegisterPage() {
   }, [isAuthenticated, isLoading, router]);
 
   const handleRegister = async () => {
-    // The OAuth flow handles both login and registration
-    // Deriv shows a sign-up form for new users
-    await login();
+    try {
+      const response = await fetch("/api/auth/deriv/login?action=registration");
+      const data = await response.json();
+
+      if (data.authorizationUrl) {
+        window.location.href = data.authorizationUrl;
+      }
+    } catch {
+      // handle error
+    }
   };
 
   if (isLoading) {
