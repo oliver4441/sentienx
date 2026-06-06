@@ -14,6 +14,10 @@ export async function POST() {
     maxAge: 0,
     path: "/",
   });
+  response.cookies.set("deriv_session", "", {
+    maxAge: 0,
+    path: "/",
+  });
 
   return response;
 }

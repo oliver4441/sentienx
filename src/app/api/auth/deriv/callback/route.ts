@@ -109,6 +109,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Set session marker for middleware
+    redirectResponse.cookies.set("deriv_session", "1", {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: tokenData.expires_in || 3600,
+      path: "/",
+    });
+
     // Clear PKCE cookies
     redirectResponse.cookies.set("deriv_code_verifier", "", {
       maxAge: 0,
