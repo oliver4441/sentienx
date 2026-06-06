@@ -5,9 +5,8 @@ import {
   PlayerBet,
   createRound,
   calculateMultiplier,
-  generateCrashPoint,
-  generateHash,
 } from "@/lib/crash-game";
+import { ensureConnection, getLatestTick, subscribeSymbol } from "@/lib/deriv-tick-stream";
 import type { DerivTick } from "@/types/deriv";
 
 // In-memory game state (use Redis/DB in production)
@@ -22,25 +21,34 @@ let gameState: GameState = {
 let roundTimer: ReturnType<typeof setTimeout> | null = null;
 let tickInterval: ReturnType<typeof setInterval> | null = null;
 
-// Simulated tick data for demo (replace with real Deriv WS data)
-function generateDemoTick(): DerivTick {
-  const symbols = ["R_100", "R_50", "R_25", "1HZ100V"];
-  const symbol = symbols[Math.floor(Math.random() * symbols.length)];
+// Ensure Deriv WS connection is active
+ensureConnection("R_100");
+subscribeSymbol("R_100");
+subscribeSymbol("1HZ100V");
+
+// Generate a tick — uses real Deriv data when available
+function getGameTick(): DerivTick {
+  const realTick = getLatestTick();
+  if (realTick) {
+    return realTick;
+  }
+  // Fallback to deterministic seed from time if WS not ready yet
+  const epoch = Math.floor(Date.now() / 1000);
   return {
     tick: {
       ask: 0,
       bid: 0,
-      epoch: Math.floor(Date.now() / 1000),
-      id: Math.random().toString(36),
+      epoch,
+      id: `fallback-${epoch}`,
       pip_size: 2,
-      quote: 50000 + Math.random() * 10000,
-      symbol,
+      quote: 50000 + (epoch % 1000),
+      symbol: "R_100",
     },
   };
 }
 
 async function startNewRound() {
-  const tick = generateDemoTick();
+  const tick = getGameTick();
   const round = await createRound(tick);
   round.status = "waiting";
 
@@ -75,13 +83,14 @@ function runRound() {
     gameState.round.multiplier = multiplier;
 
     // Auto-cashout for players with auto-cashout set
-    gameState.bets.forEach((bet) => {
-      if (!bet.cashedOutAt && multiplier >= 2) {
-        // Simplified: auto-cashout at 2x for demo
-        bet.cashedOutAt = multiplier;
-        bet.profit = bet.amount * (multiplier - 1);
-      }
-    });
+    if (gameState.round.status === "running") {
+      gameState.bets.forEach((bet) => {
+        if (!bet.cashedOutAt && bet.autoCashout && multiplier >= bet.autoCashout) {
+          bet.cashedOutAt = multiplier;
+          bet.profit = bet.amount * (multiplier - 1);
+        }
+      });
+    }
 
     // Check crash
     if (multiplier >= gameState.round.crashPoint) {
@@ -103,6 +112,14 @@ async function crashRound() {
   gameState.round.endedAt = Date.now();
   gameState.round.multiplier = crashPoint;
 
+  // Mark players who didn't cash out as losers
+  gameState.bets.forEach((bet) => {
+    if (!bet.cashedOutAt) {
+      bet.cashedOutAt = 0; // Lost
+      bet.profit = -bet.amount;
+    }
+  });
+
   // Add to history
   gameState.history.unshift({
     id: gameState.round.id,
@@ -117,7 +134,7 @@ async function crashRound() {
   }, 5000);
 }
 
-// Start the game loop
+// Start the game loop on first module load
 if (!gameState.round) {
   startNewRound();
 }
@@ -134,7 +151,7 @@ export async function GET() {
  */
 export async function POST(request: Request) {
   const body = await request.json();
-  const { action, playerId, playerName, amount } = body;
+  const { action, playerId, playerName, amount, autoCashout } = body;
 
   if (action === "bet") {
     if (gameState.round?.status !== "waiting") {
@@ -147,6 +164,7 @@ export async function POST(request: Request) {
       amount: amount || 10,
       cashedOutAt: null,
       profit: 0,
+      autoCashout: autoCashout || null,
     };
 
     gameState.bets.push(bet);

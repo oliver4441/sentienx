@@ -11,8 +11,16 @@ interface GameState {
     multiplier: number;
     startedAt: number;
     hash: string;
+    seed: string;
   } | null;
-  bets: { playerId: string; playerName: string; amount: number; cashedOutAt: number | null; profit: number }[];
+  bets: {
+    playerId: string;
+    playerName: string;
+    amount: number;
+    cashedOutAt: number | null;
+    profit: number;
+    autoCashout: number | null;
+  }[];
   history: { id: string; crashPoint: number; hash: string }[];
   countdown: number;
   totalPlayers: number;
@@ -26,6 +34,7 @@ export default function CrashGamePage() {
 
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [betAmount, setBetAmount] = useState(10);
+  const [autoCashout, setAutoCashout] = useState<number | null>(null);
   const [hasBet, setHasBet] = useState(false);
   const [cashedOut, setCashedOut] = useState(false);
   const [lastProfit, setLastProfit] = useState<number | null>(null);
@@ -39,15 +48,28 @@ export default function CrashGamePage() {
         const data: GameState = await res.json();
         setGameState(data);
 
-        // Reset bet state on new round
+        // Update bet state
         if (data.round?.status === "waiting") {
           const myBet = data.bets.find((b) => b.playerId === playerIdRef.current);
           if (myBet) {
             setHasBet(true);
-            if (myBet.cashedOutAt) {
+            if (myBet.cashedOutAt !== null && myBet.cashedOutAt !== undefined) {
               setCashedOut(true);
               setLastProfit(myBet.profit);
             }
+          } else {
+            setHasBet(false);
+            setCashedOut(false);
+            setLastProfit(null);
+          }
+        }
+
+        // Reset on new round after crash
+        if (data.round?.status === "crashed") {
+          const myBet = data.bets.find((b) => b.playerId === playerIdRef.current);
+          if (myBet && myBet.cashedOutAt !== null && myBet.cashedOutAt !== undefined) {
+            setCashedOut(true);
+            setLastProfit(myBet.profit);
           }
         }
       } catch {
@@ -56,7 +78,7 @@ export default function CrashGamePage() {
     };
 
     poll();
-    const interval = setInterval(poll, 500);
+    const interval = setInterval(poll, 250);
     return () => clearInterval(interval);
   }, []);
 
@@ -71,6 +93,7 @@ export default function CrashGamePage() {
           action: "bet",
           playerId: playerIdRef.current,
           amount: betAmount,
+          autoCashout,
         }),
       });
       const data = await res.json();
@@ -119,8 +142,14 @@ export default function CrashGamePage() {
     if (!ctx) return;
 
     const render = () => {
-      const w = canvas.width;
-      const h = canvas.height;
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+
+      const w = rect.width;
+      const h = rect.height;
 
       // Clear
       ctx.fillStyle = "#0a0a0f";
@@ -140,7 +169,7 @@ export default function CrashGamePage() {
         ctx.fillStyle = "#666";
         ctx.font = "24px monospace";
         ctx.textAlign = "center";
-        ctx.fillText("Loading...", w / 2, h / 2);
+        ctx.fillText("Connecting to Deriv...", w / 2, h / 2);
         animFrameRef.current = requestAnimationFrame(render);
         return;
       }
@@ -152,6 +181,8 @@ export default function CrashGamePage() {
       ctx.beginPath();
       ctx.strokeStyle = round.status === "crashed" ? "#ff4444" : "#00ff88";
       ctx.lineWidth = 3;
+      ctx.shadowColor = round.status === "crashed" ? "#ff4444" : "#00ff88";
+      ctx.shadowBlur = 10;
 
       const maxDisplay = Math.max(multiplier * 1.2, 5);
       const points = 100;
@@ -162,11 +193,12 @@ export default function CrashGamePage() {
         if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       }
       ctx.stroke();
+      ctx.shadowBlur = 0;
 
       // Draw multiplier text
       const multText = multiplier >= 100 ? `${multiplier.toFixed(0)}x` : `${multiplier.toFixed(2)}x`;
       ctx.fillStyle = round.status === "crashed" ? "#ff4444" : "#00ff88";
-      ctx.font = "bold 52px monospace";
+      ctx.font = `bold ${Math.min(52, w / 10)}px monospace`;
       ctx.textAlign = "center";
       ctx.fillText(multText, w / 2, h / 2 - 10);
 
@@ -188,24 +220,33 @@ export default function CrashGamePage() {
       if (hasBet) {
         ctx.font = "14px monospace";
         if (cashedOut) {
-          ctx.fillStyle = "#00ff88";
-          ctx.fillText(`✓ Cashed out: +$${lastProfit?.toFixed(2)}`, w / 2, h / 2 + 55);
+          ctx.fillStyle = lastProfit !== null && lastProfit >= 0 ? "#00ff88" : "#ff4444";
+          ctx.fillText(
+            lastProfit !== null && lastProfit >= 0
+              ? `✓ Cashed out: +$${lastProfit.toFixed(2)}`
+              : `✗ Lost $${betAmount.toFixed(2)}`,
+            w / 2, h / 2 + 55
+          );
         } else if (round.status === "crashed") {
           ctx.fillStyle = "#ff4444";
-          ctx.fillText(`✗ Lost $${betAmount.toFixed(2)}`, w / 2, h / 2 + 55);
+          ctx.fillText(`✗ CRASHED — Lost $${betAmount.toFixed(2)}`, w / 2, h / 2 + 55);
         } else {
           ctx.fillStyle = "#ffaa00";
           const currentProfit = betAmount * (multiplier - 1);
-          ctx.fillText(`In game: $${currentProfit.toFixed(2)} profit if cashout now`, w / 2, h / 2 + 55);
+          ctx.fillText(
+            `In game — $${currentProfit.toFixed(2)} if cashout now`,
+            w / 2, h / 2 + 55
+          );
         }
       }
 
       // History bar at bottom
       const historyY = h - 25;
-      const barWidth = 14;
+      const barWidth = Math.max(12, Math.min(16, (w - 100) / 30));
       const barGap = 3;
       gameState.history.slice(0, 30).forEach((hist, i) => {
         const x = w - 50 - i * (barWidth + barGap);
+        if (x < 0) return;
         ctx.fillStyle = hist.crashPoint < 2 ? "#ff4444" : hist.crashPoint < 5 ? "#ffaa00" : "#00ff88";
         ctx.fillRect(x, historyY, barWidth, 15);
         ctx.fillStyle = "#fff";
@@ -235,9 +276,12 @@ export default function CrashGamePage() {
     );
   }
 
+  const currentMultiplier = gameState?.round?.multiplier || 1;
+  const potentialProfit = betAmount * (currentMultiplier - 1);
+
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white p-4">
-      <div className="max-w-5xl mx-auto space-y-4">
+      <div className="max-w-6xl mx-auto space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">🚀 Crash Game</h1>
@@ -245,94 +289,192 @@ export default function CrashGamePage() {
             <span>Players: {gameState?.totalPlayers || 0}</span>
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
             <span className="text-green-400">Live</span>
+            <span className="text-xs text-gray-600">Powered by Deriv</span>
           </div>
         </div>
 
-        {/* Game Canvas */}
-        <div className="bg-[#111118] rounded-xl overflow-hidden border border-[#1a1a2e]">
-          <canvas ref={canvasRef} width={800} height={400} className="w-full" />
-        </div>
-
-        {/* Controls */}
-        <div className="bg-[#111118] rounded-xl p-4 border border-[#1a1a2e]">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="text-sm text-gray-400 block mb-1">Bet Amount ($)</label>
-              <input
-                type="number"
-                value={betAmount}
-                onChange={(e) => setBetAmount(Math.max(1, Number(e.target.value)))}
-                disabled={hasBet}
-                min={1}
-                className="w-full bg-[#0a0a0f] border border-[#1a1a2e] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-sentienx-brand disabled:opacity-50"
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          {/* Game Canvas — takes 3 cols */}
+          <div className="lg:col-span-3 space-y-4">
+            <div className="bg-[#111118] rounded-xl overflow-hidden border border-[#1a1a2e]">
+              <canvas
+                ref={canvasRef}
+                className="w-full"
+                style={{ height: "400px" }}
               />
-              <div className="flex gap-1 mt-2">
-                {[1, 5, 10, 25, 50, 100].map((a) => (
-                  <button key={a} onClick={() => setBetAmount(a)} className="px-2 py-1 rounded bg-[#1a1a2e] text-xs hover:bg-[#2a2a3e] transition-colors">${a}</button>
+            </div>
+
+            {/* Controls */}
+            <div className="bg-[#111118] rounded-xl p-4 border border-[#1a1a2e]">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {/* Bet Amount */}
+                <div>
+                  <label className="text-sm text-gray-400 block mb-1">Bet Amount ($)</label>
+                  <input
+                    type="number"
+                    value={betAmount}
+                    onChange={(e) => setBetAmount(Math.max(1, Number(e.target.value)))}
+                    disabled={hasBet}
+                    min={1}
+                    className="w-full bg-[#0a0a0f] border border-[#1a1a2e] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-sentienx-brand disabled:opacity-50"
+                  />
+                  <div className="flex gap-1 mt-2 flex-wrap">
+                    {[1, 5, 10, 25, 50, 100].map((a) => (
+                      <button
+                        key={a}
+                        onClick={() => !hasBet && setBetAmount(a)}
+                        className="px-2 py-1 rounded bg-[#1a1a2e] text-xs hover:bg-[#2a2a3e] transition-colors"
+                      >
+                        ${a}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Auto Cashout */}
+                <div>
+                  <label className="text-sm text-gray-400 block mb-1">Auto Cashout (optional)</label>
+                  <input
+                    type="number"
+                    value={autoCashout || ""}
+                    onChange={(e) => setAutoCashout(e.target.value ? Number(e.target.value) : null)}
+                    disabled={hasBet}
+                    min={1.01}
+                    step={0.5}
+                    placeholder="e.g. 2.0"
+                    className="w-full bg-[#0a0a0f] border border-[#1a1a2e] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-sentienx-brand disabled:opacity-50"
+                  />
+                  <div className="flex gap-1 mt-2 flex-wrap">
+                    {[1.5, 2, 3, 5, 10].map((m) => (
+                      <button
+                        key={m}
+                        onClick={() => !hasBet && setAutoCashout(m)}
+                        className="px-2 py-1 rounded bg-[#1a1a2e] text-xs hover:bg-[#2a2a3e] transition-colors"
+                      >
+                        {m}x
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Place Bet */}
+                <div className="flex items-end">
+                  <button
+                    onClick={placeBet}
+                    disabled={hasBet || gameState?.round?.status === "running"}
+                    className="w-full py-3 rounded-lg bg-sentienx-brand hover:bg-sentienx-brand-dark text-white font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {hasBet ? "✓ Bet Placed" : `Place Bet $${betAmount}`}
+                  </button>
+                </div>
+
+                {/* Cash Out */}
+                <div className="flex items-end">
+                  <button
+                    onClick={cashOut}
+                    disabled={!hasBet || cashedOut || gameState?.round?.status !== "running"}
+                    className="w-full py-3 rounded-lg bg-green-600 hover:bg-green-700 text-white font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-lg"
+                  >
+                    {cashedOut
+                      ? lastProfit !== null && lastProfit >= 0
+                        ? `+$${lastProfit.toFixed(2)}`
+                        : `-$${betAmount.toFixed(2)}`
+                      : gameState?.round?.status === "running"
+                        ? `💰 CASH OUT $${potentialProfit.toFixed(2)}`
+                        : "💰 CASH OUT"}
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <div className="mt-3 p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                  {error}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Sidebar — Players & History */}
+          <div className="space-y-4">
+            {/* Current Players */}
+            <div className="bg-[#111118] rounded-xl p-4 border border-[#1a1a2e]">
+              <h3 className="text-sm font-medium text-gray-400 mb-3">👥 Players ({gameState?.totalPlayers || 0})</h3>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {gameState?.bets?.map((bet) => (
+                  <div
+                    key={bet.playerId}
+                    className={`flex items-center justify-between text-xs p-2 rounded-lg ${
+                      bet.playerId === playerIdRef.current
+                        ? "bg-sentienx-brand/10 border border-sentienx-brand/20"
+                        : "bg-[#0a0a0f]"
+                    }`}
+                  >
+                    <span className={bet.playerId === playerIdRef.current ? "text-sentienx-brand font-medium" : "text-gray-300"}>
+                      {bet.playerId === playerIdRef.current ? "You" : bet.playerName}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-400">${bet.amount}</span>
+                      {bet.cashedOutAt ? (
+                        <span className="text-green-400 font-medium">@{bet.cashedOutAt.toFixed(2)}x</span>
+                      ) : gameState?.round?.status === "crashed" ? (
+                        <span className="text-red-400">Lost</span>
+                      ) : gameState?.round?.status === "running" ? (
+                        <span className="text-yellow-400">Playing</span>
+                      ) : (
+                        <span className="text-gray-500">Betting</span>
+                      )}
+                    </div>
+                  </div>
                 ))}
+                {(!gameState?.bets || gameState.bets.length === 0) && (
+                  <p className="text-gray-500 text-xs text-center py-2">No players yet</p>
+                )}
               </div>
             </div>
 
-            <div className="flex items-end">
-              <button
-                onClick={placeBet}
-                disabled={hasBet || gameState?.round?.status === "running"}
-                className="w-full py-3 rounded-lg bg-sentienx-brand hover:bg-sentienx-brand-dark text-white font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {hasBet ? "✓ Bet Placed" : `Place Bet $${betAmount}`}
-              </button>
+            {/* Round History */}
+            <div className="bg-[#111118] rounded-xl p-4 border border-[#1a1a2e]">
+              <h3 className="text-sm font-medium text-gray-400 mb-3">📊 History</h3>
+              <div className="flex gap-1.5 flex-wrap">
+                {gameState?.history.slice(0, 20).map((h) => (
+                  <span
+                    key={h.id}
+                    className={`px-2 py-0.5 rounded text-xs font-mono font-bold ${
+                      h.crashPoint < 2
+                        ? "bg-red-500/20 text-red-400"
+                        : h.crashPoint < 5
+                          ? "bg-yellow-500/20 text-yellow-400"
+                          : "bg-green-500/20 text-green-400"
+                    }`}
+                  >
+                    {h.crashPoint.toFixed(2)}x
+                  </span>
+                ))}
+                {(!gameState?.history || gameState.history.length === 0) && (
+                  <span className="text-gray-500 text-xs">No rounds yet</span>
+                )}
+              </div>
             </div>
 
-            <div className="flex items-end">
-              <button
-                onClick={cashOut}
-                disabled={!hasBet || cashedOut || gameState?.round?.status !== "running"}
-                className="w-full py-3 rounded-lg bg-green-600 hover:bg-green-700 text-white font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-lg"
-              >
-                {cashedOut ? `+$${lastProfit?.toFixed(2)}` : "💰 CASH OUT"}
-              </button>
+            {/* Provably Fair */}
+            <div className="bg-[#111118] rounded-xl p-4 border border-[#1a1a2e]">
+              <h3 className="text-sm font-medium text-gray-400 mb-2">🔒 Provably Fair</h3>
+              <p className="text-xs text-gray-500">
+                Crash points are generated from SHA-256 hashes of Deriv market tick data.
+                Neither players nor the house can predict outcomes.
+              </p>
+              {gameState?.round?.hash && (
+                <div className="mt-2 space-y-1">
+                  <p className="text-xs text-gray-600 font-mono break-all">
+                    Hash: {gameState.round.hash.substring(0, 24)}...
+                  </p>
+                  <p className="text-xs text-gray-600 font-mono break-all">
+                    Seed: {gameState.round.seed}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
-
-          {error && (
-            <div className="mt-3 p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-              {error}
-            </div>
-          )}
-        </div>
-
-        {/* History */}
-        <div className="bg-[#111118] rounded-xl p-4 border border-[#1a1a2e]">
-          <h3 className="text-sm font-medium text-gray-400 mb-3">📊 Round History</h3>
-          <div className="flex gap-2 flex-wrap">
-            {gameState?.history.slice(0, 20).map((h) => (
-              <span
-                key={h.id}
-                className={`px-2.5 py-1 rounded text-xs font-mono font-bold ${
-                  h.crashPoint < 2 ? "bg-red-500/20 text-red-400" : h.crashPoint < 5 ? "bg-yellow-500/20 text-yellow-400" : "bg-green-500/20 text-green-400"
-                }`}
-              >
-                {h.crashPoint.toFixed(2)}x
-              </span>
-            ))}
-            {(!gameState?.history || gameState.history.length === 0) && (
-              <span className="text-gray-500 text-sm">No rounds yet</span>
-            )}
-          </div>
-        </div>
-
-        {/* Provably Fair Info */}
-        <div className="bg-[#111118] rounded-xl p-4 border border-[#1a1a2e]">
-          <h3 className="text-sm font-medium text-gray-400 mb-2">🔒 Provably Fair</h3>
-          <p className="text-xs text-gray-500">
-            Each round's crash point is determined by a SHA-256 hash of a seed derived from Deriv market data.
-            Neither the house nor players can predict or manipulate the outcome.
-          </p>
-          {gameState?.round?.hash && (
-            <p className="text-xs text-gray-600 mt-1 font-mono">
-              Current round hash: {gameState.round.hash.substring(0, 32)}...
-            </p>
-          )}
         </div>
       </div>
     </div>

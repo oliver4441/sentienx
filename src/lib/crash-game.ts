@@ -28,6 +28,7 @@ export interface PlayerBet {
   amount: number;
   cashedOutAt: number | null;
   profit: number;
+  autoCashout: number | null; // Auto-cashout multiplier (e.g., 2.0 = cash out at 2x)
 }
 
 export interface GameState {
