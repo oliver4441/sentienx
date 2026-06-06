@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useDerivWS } from "@/hooks/use-deriv-ws";
 import { TradingChart } from "@/components/charts/trading-chart";
-import type { DerivActiveSymbol, DerivTick } from "@/types/deriv";
+import type { DerivActiveSymbol, DerivTick, DerivActiveSymbolsResponse } from "@/types/deriv";
 import type { CandlestickData, Time } from "lightweight-charts";
 
 const MARKET_GROUPS = [
@@ -36,9 +36,10 @@ export default function MarketsPage() {
   // Fetch active symbols on connect
   useEffect(() => {
     if (connectionStatus === "connected") {
-      send({ active_symbols: "brief", product_type: "basic" } as any)
-        .then((data: any) => {
-          const syms = data.active_symbols || [];
+      send({ active_symbols: "brief", product_type: "basic" } as Record<string, unknown>)
+        .then((data) => {
+          const response = data as DerivActiveSymbolsResponse;
+          const syms = response.active_symbols || [];
           setSymbols(syms);
           setLoading(false);
           // Auto-select first symbol in group
@@ -81,8 +82,8 @@ export default function MarketsPage() {
           })
         );
         setCandles(formatted);
-      } catch (err: any) {
-        setCandlesError(err.message || "Failed to load chart data");
+      } catch (err) {
+        setCandlesError(err instanceof Error ? err.message : "Failed to load chart data");
         setCandles([]);
       } finally {
         setCandlesLoading(false);

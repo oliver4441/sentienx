@@ -2,19 +2,20 @@
 
 import { useState } from "react";
 import { useDerivWS } from "@/hooks/use-deriv-ws";
+import type { TransactionHistory } from "@/types/deriv";
 
 export default function HistoryPage() {
   const { send, connectionStatus } = useDerivWS({ autoConnect: true });
-  const [transactions, setTransactions] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<TransactionHistory[]>([]);
   const [loading, setLoading] = useState(false);
 
   const loadHistory = async () => {
     setLoading(true);
     try {
-      const result: any = await send({
+      const result = await send({
         transaction_history: 1,
         limit: 50,
-      });
+      }) as { transaction_history?: { transactions: TransactionHistory[] } };
       setTransactions(result?.transaction_history?.transactions || []);
     } catch (err) {
       console.error("Failed to load history:", err);
@@ -50,28 +51,28 @@ export default function HistoryPage() {
           </div>
         ) : (
           <div className="divide-y divide-sentienx-border">
-            {transactions.map((tx: any, i: number) => (
+            {transactions.map((tx, i) => (
               <div
-                key={tx.transaction_id || i}
+                key={tx.transaction.transaction_id || i}
                 className="flex items-center justify-between py-3 px-4"
               >
                 <div>
-                  <p className="text-sm font-medium">{tx.longcode}</p>
+                  <p className="text-sm font-medium">{tx.transaction.longcode}</p>
                   <p className="text-xs text-sentienx-text-dim">
-                    {new Date(tx.transaction_time * 1000).toLocaleString()}
+                    {new Date(tx.transaction.transaction_time * 1000).toLocaleString()}
                   </p>
                 </div>
                 <div className="text-right">
                   <p
                     className={`text-sm font-medium tabular-nums ${
-                      tx.amount >= 0 ? "text-sentienx-bull" : "text-sentienx-bear"
+                      tx.transaction.amount >= 0 ? "text-sentienx-bull" : "text-sentienx-bear"
                     }`}
                   >
-                    {tx.amount >= 0 ? "+" : ""}
-                    ${tx.amount?.toFixed(2)}
+                    {tx.transaction.amount >= 0 ? "+" : ""}
+                    ${tx.transaction.amount?.toFixed(2)}
                   </p>
                   <p className="text-xs text-sentienx-text-dim">
-                    Balance: ${tx.balance_after?.toFixed(2)}
+                    Balance: ${tx.transaction.balance_after?.toFixed(2)}
                   </p>
                 </div>
               </div>

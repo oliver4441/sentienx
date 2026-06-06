@@ -269,3 +269,17 @@ export interface DerivCandlesResponse {
   granularity: number
   symbol: string
 }
+
+// ─── Active Symbols Types ────────────────────────────────────────────────────
+
+export interface DerivActiveSymbolsResponse {
+  active_symbols: DerivActiveSymbol[]
+}
+
+// ─── Transaction History Response ────────────────────────────────────────────
+
+export interface DerivTransactionHistoryResponse {
+  transaction_history: {
+    transactions: TransactionHistory[]
+  }
+}

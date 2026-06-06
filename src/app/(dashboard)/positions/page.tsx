@@ -2,9 +2,11 @@
 
 import { useDerivWS } from "@/hooks/use-deriv-ws";
 
+import type { DerivPortfolioPosition } from "@/types/deriv";
+
 export default function PositionsPage() {
   const { portfolio, connectionStatus } = useDerivWS({ autoConnect: true });
-  const contracts = portfolio?.portfolio?.contracts || [];
+  const contracts: DerivPortfolioPosition[] = portfolio?.portfolio?.contracts || [];
 
   return (
     <div className="space-y-6">
@@ -29,7 +31,7 @@ export default function PositionsPage() {
           </div>
         ) : (
           <div className="divide-y divide-sentienx-border">
-            {contracts.map((contract: any) => (
+            {contracts.map((contract) => (
               <div
                 key={contract.contract_id}
                 className="flex items-center justify-between py-4 px-4"

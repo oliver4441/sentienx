@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useDerivWS } from "@/hooks/use-deriv-ws";
-import type { DerivProposal } from "@/types/deriv";
+import type { DerivProposal, DerivWSResponse } from "@/types/deriv";
 
 const CONTRACT_TYPES = [
   { value: "CALL", label: "Rise", icon: "↑" },
@@ -39,7 +39,7 @@ export default function TradePage() {
     setLoading(true);
     setError(null);
     try {
-      const result: any = await send({
+      const result = await send({
         proposal: 1,
         contract_type: contractType,
         symbol: symbol,
@@ -48,14 +48,14 @@ export default function TradePage() {
         amount: stake,
         basis: "stake",
         currency: "USD",
-      });
+      }) as DerivWSResponse<DerivProposal>;
       if (result.proposal) {
-        setProposal(result);
+        setProposal(result as unknown as DerivProposal);
       } else if (result.error) {
         setError(result.error.message);
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to get proposal");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to get proposal");
     }
     setLoading(false);
   };
@@ -65,18 +65,18 @@ export default function TradePage() {
     setLoading(true);
     setError(null);
     try {
-      const result: any = await send({
+      const result = await send({
         buy: proposal.proposal.id,
         price: proposal.proposal.ask_price,
-      });
+      }) as DerivWSResponse;
       if (result.error) {
         setError(result.error.message);
-      } else if (result.buy) {
+      } else if ((result as unknown as { buy: { contract_id: number } }).buy) {
         setProposal(null);
-        alert(`Contract purchased! ID: ${result.buy.contract_id}`);
+        alert(`Contract purchased! ID: ${(result as unknown as { buy: { contract_id: number } }).buy.contract_id}`);
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to buy contract");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to buy contract");
     }
     setLoading(false);
   };

@@ -84,7 +84,7 @@ export function useDerivWS(options: UseDerivWSOptions = {}): UseDerivWSReturn {
           Math.min(reconnectAttempt.current, RECONNECT_DELAYS.length - 1)
         ];
 
-      console.log(
+      console.warn(
         `WS reconnect attempt ${reconnectAttempt.current + 1}/${MAX_RECONNECT_ATTEMPTS} in ${delay}ms`
       );
 
