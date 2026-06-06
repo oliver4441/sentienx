@@ -1,18 +1,36 @@
 import { type NextRequest, NextResponse } from "next/server";
 
 import { DERIV_CONFIG } from "@/lib/constants";
+import { rateLimit, getClientIdentifier } from "@/lib/rate-limit";
+
+// OAuth callback: 20 requests per 15 minutes per IP
+const CALLBACK_LIMIT = { maxRequests: 20, windowMs: 15 * 60 * 1000 };
 
 /**
  * Handle Deriv OAuth callback.
  * Exchanges the authorization code for access/refresh tokens.
  */
 export async function GET(request: NextRequest) {
+  // Rate limit
+  const clientId = getClientIdentifier(request);
+  const limitResult = rateLimit(`callback:${clientId}`, CALLBACK_LIMIT);
+  if (!limitResult.allowed) {
+    return NextResponse.redirect(
+      new URL(
+        `/login?error=${encodeURIComponent("Too many requests. Try again later.")}`,
+        request.url
+      ),
+      {
+        headers: { "Retry-After": String(limitResult.retryAfter) },
+      }
+    );
+  }
+
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
   const state = searchParams.get("state");
   const error = searchParams.get("error");
 
-  // Handle OAuth errors
   if (error) {
     return NextResponse.redirect(
       new URL(`/login?error=${encodeURIComponent(error)}`, request.url)
@@ -42,7 +60,6 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Exchange code for tokens
     const body = new URLSearchParams({
       grant_type: "authorization_code",
       client_id: DERIV_CONFIG.appId,
@@ -67,11 +84,7 @@ export async function GET(request: NextRequest) {
 
     const tokenData = await response.json();
 
-    // Redirect to dashboard with success
-    // Tokens are passed via secure cookies set by a server action or stored in session
     const redirectUrl = new URL("/dashboard", request.url);
-
-    // Set secure cookies with the tokens
     const redirectResponse = NextResponse.redirect(redirectUrl);
 
     redirectResponse.cookies.set("deriv_access_token", tokenData.access_token, {
@@ -90,7 +103,7 @@ export async function GET(request: NextRequest) {
           httpOnly: true,
           secure: process.env.NODE_ENV === "production",
           sameSite: "lax",
-          maxAge: 30 * 24 * 60 * 60, // 30 days
+          maxAge: 30 * 24 * 60 * 60,
           path: "/",
         }
       );

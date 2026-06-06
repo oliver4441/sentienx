@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import {
   createContext,
@@ -6,41 +6,30 @@ import {
   useState,
   useCallback,
   useEffect,
-} from "react"
+} from "react";
 
-import type { ReactNode } from "react"
+import type { ReactNode } from "react";
+import type { DerivAccountInfo } from "@/types/deriv";
 
-import type { DerivAccountInfo } from "@/types/deriv"
-
-/**
- * Auth state shape
- */
 interface AuthState {
-  isAuthenticated: boolean
-  isLoading: boolean
-  accessToken: string | null
-  accountInfo: DerivAccountInfo | null
-  error: string | null
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  accessToken: string | null;
+  accountInfo: DerivAccountInfo | null;
+  error: string | null;
 }
 
-/**
- * Auth context shape
- */
 interface AuthContextType extends AuthState {
-  login: () => Promise<void>
-  logout: () => void
-  setAccessToken: (token: string) => void
+  login: () => Promise<void>;
+  logout: () => void;
+  setAccessToken: (token: string) => void;
+  refreshSession: () => Promise<boolean>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-/**
- * Auth Context Provider
- *
- * Manages Deriv OAuth authentication state.
- * - login():  Redirects to Deriv OAuth with PKCE
- * - logout(): Clears tokens and redirects to login
- */
+const SESSION_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
     isAuthenticated: false,
@@ -48,15 +37,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     accessToken: null,
     accountInfo: null,
     error: null,
-  })
+  });
 
-  // Check for existing token on mount
+  // Check for existing session on mount
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const response = await fetch("/api/auth/deriv/session")
-        if (response.ok) {
-          const data = await response.json()
+    checkSession();
+  }, []);
+
+  // Periodic session check to keep account info fresh
+  useEffect(() => {
+    if (!state.isAuthenticated) return;
+
+    const interval = setInterval(() => {
+      checkSession();
+    }, SESSION_CHECK_INTERVAL);
+
+    return () => clearInterval(interval);
+  }, [state.isAuthenticated]);
+
+  const checkSession = async () => {
+    try {
+      const response = await fetch("/api/auth/deriv/session", {
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.accessToken) {
+          setState({
+            isAuthenticated: true,
+            isLoading: false,
+            accessToken: data.accessToken,
+            accountInfo: data.accountInfo || null,
+            error: null,
+          });
+          return;
+        }
+      }
+    } catch {
+      // Not authenticated — that's fine
+    }
+    setState((prev) => ({ ...prev, isLoading: false }));
+  };
+
+  const refreshSession = useCallback(async (): Promise<boolean> => {
+    try {
+      const refreshResponse = await fetch("/api/auth/deriv/refresh", {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (refreshResponse.ok) {
+        // Re-fetch session to get updated tokens + account info
+        const sessionResponse = await fetch("/api/auth/deriv/session", {
+          credentials: "include",
+        });
+        if (sessionResponse.ok) {
+          const data = await sessionResponse.json();
           if (data.accessToken) {
             setState({
               isAuthenticated: true,
@@ -64,69 +101,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               accessToken: data.accessToken,
               accountInfo: data.accountInfo || null,
               error: null,
-            })
-            return
+            });
+            return true;
           }
         }
-      } catch {
-        // Not authenticated — that's fine
       }
-      setState((prev) => ({ ...prev, isLoading: false }))
+    } catch {
+      // Refresh failed
     }
 
-    checkAuth()
-  }, [])
-
-  /**
-   * Initiate Deriv OAuth login flow
-   */
-  const login = useCallback(async () => {
-    try {
-      // Get the authorization URL from our API route
-      const response = await fetch("/api/auth/deriv/login")
-      const data = await response.json()
-
-      if (data.authorizationUrl) {
-        window.location.href = data.authorizationUrl
-      } else {
-        setState((prev) => ({
-          ...prev,
-          error: "Failed to get authorization URL",
-        }))
-      }
-    } catch (err) {
-      setState((prev) => ({
-        ...prev,
-        error: err instanceof Error ? err.message : "Login failed",
-      }))
-    }
-  }, [])
-
-  /**
-   * Logout — clear tokens and session
-   */
-  const logout = useCallback(async () => {
-    await fetch("/api/auth/deriv/logout", { method: "POST" })
     setState({
       isAuthenticated: false,
       isLoading: false,
       accessToken: null,
       accountInfo: null,
       error: null,
-    })
-    window.location.href = "/login"
-  }, [])
+    });
+    return false;
+  }, []);
 
-  /**
-   * Set the access token (used after OAuth callback)
-   */
+  const login = useCallback(async () => {
+    try {
+      const response = await fetch("/api/auth/deriv/login");
+      const data = await response.json();
+
+      if (data.authorizationUrl) {
+        window.location.href = data.authorizationUrl;
+      } else {
+        setState((prev) => ({
+          ...prev,
+          error: "Failed to get authorization URL",
+        }));
+      }
+    } catch (err) {
+      setState((prev) => ({
+        ...prev,
+        error: err instanceof Error ? err.message : "Login failed",
+      }));
+    }
+  }, []);
+
+  const logout = useCallback(async () => {
+    await fetch("/api/auth/deriv/logout", { method: "POST" });
+    setState({
+      isAuthenticated: false,
+      isLoading: false,
+      accessToken: null,
+      accountInfo: null,
+      error: null,
+    });
+    window.location.href = "/login";
+  }, []);
+
   const setAccessToken = useCallback((token: string) => {
     setState((prev) => ({
       ...prev,
       isAuthenticated: true,
       accessToken: token,
-    }))
-  }, [])
+    }));
+  }, []);
 
   return (
     <AuthContext.Provider
@@ -135,20 +168,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         logout,
         setAccessToken,
+        refreshSession,
       }}
     >
       {children}
     </AuthContext.Provider>
-  )
+  );
 }
 
-/**
- * Hook to access auth context
- */
 export function useAuth() {
-  const context = useContext(AuthContext)
+  const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider")
+    throw new Error("useAuth must be used within an AuthProvider");
   }
-  return context
+  return context;
 }
