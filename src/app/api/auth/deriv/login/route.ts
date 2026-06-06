@@ -9,6 +9,8 @@ const LOGIN_LIMIT = { maxRequests: 10, windowMs: 15 * 60 * 1000 };
 /**
  * Generate PKCE params and redirect to Deriv OAuth.
  * Called by the login button to initiate the OAuth flow.
+ *
+ * @see https://developers.deriv.com/docs/intro/oauth/
  */
 export async function GET(request: NextRequest) {
   // Rate limit
@@ -24,6 +26,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // Generate PKCE code verifier (43-128 chars)
   const array = new Uint8Array(32);
   crypto.getRandomValues(array);
   const codeVerifier = btoa(String.fromCharCode(...array))
@@ -31,6 +34,7 @@ export async function GET(request: NextRequest) {
     .replace(/\//g, "_")
     .replace(/=+$/, "");
 
+  // Derive code challenge: BASE64URL(SHA256(code_verifier))
   const encoder = new TextEncoder();
   const data = encoder.encode(codeVerifier);
   const digest = await crypto.subtle.digest("SHA-256", data);
@@ -39,28 +43,32 @@ export async function GET(request: NextRequest) {
     .replace(/\//g, "_")
     .replace(/=+$/, "");
 
+  // Generate state for CSRF protection
   const stateArray = new Uint8Array(16);
   crypto.getRandomValues(stateArray);
   const state = Array.from(stateArray, (b) =>
     b.toString(16).padStart(2, "0")
   ).join("");
 
-  const response = NextResponse.json({
-    authorizationUrl: buildAuthUrl(codeChallenge, state),
-  });
+  // Build the authorization URL per Deriv docs
+  const authUrl = buildAuthUrl(codeChallenge, state);
 
+  // Return the URL to the client (client-side redirect)
+  const response = NextResponse.json({ authorizationUrl: authUrl });
+
+  // Store PKCE verifier and state in HTTP-only cookies
+  const isProduction = process.env.NODE_ENV === "production";
   response.cookies.set("deriv_code_verifier", codeVerifier, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
     maxAge: 600,
     path: "/",
   });
-
   response.cookies.set("deriv_oauth_state", state, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
     maxAge: 600,
     path: "/",
   });
@@ -70,7 +78,7 @@ export async function GET(request: NextRequest) {
 
 function buildAuthUrl(codeChallenge: string, state: string): string {
   const params = new URLSearchParams({
-    app_id: DERIV_CONFIG.appId,
+    app_id: String(DERIV_CONFIG.appId),
     redirect_uri: DERIV_CONFIG.redirectUri,
     response_type: "code",
     scope: "read trade payments admin",
@@ -79,6 +87,7 @@ function buildAuthUrl(codeChallenge: string, state: string): string {
     state: state,
   });
 
+  // Affiliate tracking — critical for commission earnings
   if (DERIV_CONFIG.affiliateToken) {
     params.append("t", DERIV_CONFIG.affiliateToken);
   }

@@ -9,6 +9,8 @@ const CALLBACK_LIMIT = { maxRequests: 20, windowMs: 15 * 60 * 1000 };
 /**
  * Handle Deriv OAuth callback.
  * Exchanges the authorization code for access/refresh tokens.
+ *
+ * @see https://developers.deriv.com/docs/intro/oauth/
  */
 export async function GET(request: NextRequest) {
   // Rate limit
@@ -62,7 +64,7 @@ export async function GET(request: NextRequest) {
   try {
     const body = new URLSearchParams({
       grant_type: "authorization_code",
-      client_id: DERIV_CONFIG.appId,
+      client_id: String(DERIV_CONFIG.appId),
       code: code,
       redirect_uri: DERIV_CONFIG.redirectUri,
       code_verifier: codeVerifier,
@@ -84,49 +86,43 @@ export async function GET(request: NextRequest) {
 
     const tokenData = await response.json();
 
+    const isProduction = process.env.NODE_ENV === "production";
+    const cookieOpts = {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? ("none" as const) : ("lax" as const),
+      path: "/",
+    };
+
     const redirectUrl = new URL("/dashboard", request.url);
     const redirectResponse = NextResponse.redirect(redirectUrl);
 
+    // Set access token
     redirectResponse.cookies.set("deriv_access_token", tokenData.access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      ...cookieOpts,
       maxAge: tokenData.expires_in || 3600,
-      path: "/",
     });
 
+    // Set refresh token with rotation
     if (tokenData.refresh_token) {
-      redirectResponse.cookies.set(
-        "deriv_refresh_token",
-        tokenData.refresh_token,
-        {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "lax",
-          maxAge: 30 * 24 * 60 * 60,
-          path: "/",
-        }
-      );
+      redirectResponse.cookies.set("deriv_refresh_token", tokenData.refresh_token, {
+        ...cookieOpts,
+        maxAge: 30 * 24 * 60 * 60, // 30 days
+      });
     }
 
-    // Set session marker for middleware
+    // Set session marker for middleware (not httpOnly so middleware can read it)
     redirectResponse.cookies.set("deriv_session", "1", {
       httpOnly: false,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
       maxAge: tokenData.expires_in || 3600,
       path: "/",
     });
 
     // Clear PKCE cookies
-    redirectResponse.cookies.set("deriv_code_verifier", "", {
-      maxAge: 0,
-      path: "/",
-    });
-    redirectResponse.cookies.set("deriv_oauth_state", "", {
-      maxAge: 0,
-      path: "/",
-    });
+    redirectResponse.cookies.set("deriv_code_verifier", "", { maxAge: 0, path: "/" });
+    redirectResponse.cookies.set("deriv_oauth_state", "", { maxAge: 0, path: "/" });
 
     return redirectResponse;
   } catch (err) {

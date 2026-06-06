@@ -3,7 +3,6 @@ import type { NextRequest } from "next/server";
 
 // Routes that require authentication
 const protectedRoutes = [
-  "/",
   "/trade",
   "/markets",
   "/positions",
@@ -20,15 +19,15 @@ const authRoutes = ["/login", "/register"];
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Check for session cookie (set by /api/auth/deriv/callback)
+  // Check for session cookie
   const hasSession = request.cookies.has("deriv_session");
 
-  // Redirect authenticated users away from auth pages
+  // Redirect authenticated users away from auth pages → dashboard
   if (hasSession && authRoutes.some((route) => pathname.startsWith(route))) {
-    return NextResponse.redirect(new URL("/", request.url));
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  // Redirect unauthenticated users to login
+  // Redirect unauthenticated users away from protected routes → login
   if (
     !hasSession &&
     protectedRoutes.some(

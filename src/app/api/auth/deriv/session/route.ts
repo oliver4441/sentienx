@@ -27,6 +27,7 @@ export async function GET(request: Request) {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${decodedToken}`,
+          "Deriv-App-ID": String(DERIV_CONFIG.appId),
         },
         body: JSON.stringify({ authorize: decodedToken }),
       }

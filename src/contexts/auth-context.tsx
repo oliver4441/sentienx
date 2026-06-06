@@ -126,6 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = await response.json();
 
       if (data.authorizationUrl) {
+        // Full page redirect to Deriv OAuth
         window.location.href = data.authorizationUrl;
       } else {
         setState((prev) => ({
