@@ -253,3 +253,19 @@ export interface MarketData {
   market: string
   submarket: string
 }
+
+// ─── Candlestick Types ───────────────────────────────────────────────────────
+
+export interface DerivCandle {
+  epoch: number
+  open: number
+  high: number
+  low: number
+  close: number
+}
+
+export interface DerivCandlesResponse {
+  candles: DerivCandle[]
+  granularity: number
+  symbol: string
+}

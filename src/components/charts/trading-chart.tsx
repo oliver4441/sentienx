@@ -82,6 +82,7 @@ export function TradingChart({
 
     if (data.length > 0) {
       candlestickSeries.setData(data);
+      chart.timeScale().fitContent();
     }
 
     const handleResize = () => {
@@ -111,6 +112,9 @@ export function TradingChart({
   useEffect(() => {
     if (seriesRef.current && data.length > 0) {
       seriesRef.current.setData(data);
+      if (chartRef.current) {
+        chartRef.current.timeScale().fitContent();
+      }
     }
   }, [data]);
 
@@ -119,17 +123,9 @@ export function TradingChart({
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           <h3 className="text-sm font-semibold">{symbol}</h3>
-          <span className="text-xs text-sentienx-text-dim">Candlestick</span>
-        </div>
-        <div className="flex items-center gap-1">
-          {["1m", "5m", "15m", "1h", "4h", "1d"].map((tf) => (
-            <button
-              key={tf}
-              className="px-2 py-1 text-xs rounded bg-sentienx-bg border border-sentienx-border text-sentienx-text-dim hover:text-sentienx-text hover:border-sentienx-border-hover transition-colors"
-            >
-              {tf}
-            </button>
-          ))}
+          <span className="text-xs text-sentienx-text-dim">
+            {data.length} candles
+          </span>
         </div>
       </div>
       <div ref={chartContainerRef} className="w-full" />

@@ -13,78 +13,109 @@ const MARKET_GROUPS = [
   { key: "cryptocurrency", label: "Crypto" },
 ];
 
-// Generate mock candlestick data for demo (replace with real WS ticks)
-function generateMockCandles(count: number): CandlestickData<Time>[] {
-  const data: CandlestickData<Time>[] = [];
-  let time = Math.floor(Date.now() / 1000) - count * 60;
-  let price = 50 + Math.random() * 50;
-
-  for (let i = 0; i < count; i++) {
-    const open = price;
-    const change = (Math.random() - 0.48) * 2;
-    const close = open + change;
-    const high = Math.max(open, close) + Math.random() * 1;
-    const low = Math.min(open, close) - Math.random() * 1;
-
-    data.push({
-      time: (time + i * 60) as Time,
-      open: Number(open.toFixed(4)),
-      high: Number(high.toFixed(4)),
-      low: Number(low.toFixed(4)),
-      close: Number(close.toFixed(4)),
-    });
-
-    price = close;
-  }
-
-  return data;
-}
+const TIMEFRAMES = [
+  { label: "1m", granularity: 60, count: 100 },
+  { label: "5m", granularity: 300, count: 100 },
+  { label: "15m", granularity: 900, count: 100 },
+  { label: "1h", granularity: 3600, count: 100 },
+  { label: "4h", granularity: 14400, count: 100 },
+  { label: "1d", granularity: 86400, count: 100 },
+];
 
 export default function MarketsPage() {
   const { send, connectionStatus, lastTick } = useDerivWS({ autoConnect: true });
   const [symbols, setSymbols] = useState<DerivActiveSymbol[]>([]);
   const [selectedGroup, setSelectedGroup] = useState("synthetic_index");
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
+  const [selectedTimeframe, setSelectedTimeframe] = useState(TIMEFRAMES[0]);
+  const [candles, setCandles] = useState<CandlestickData<Time>[]>([]);
+  const [candlesLoading, setCandlesLoading] = useState(false);
+  const [candlesError, setCandlesError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tickData, setTickData] = useState<CandlestickData<Time>[]>([]);
 
+  // Fetch active symbols on connect
   useEffect(() => {
     if (connectionStatus === "connected") {
       send({ active_symbols: "brief", product_type: "basic" } as any)
         .then((data: any) => {
-          setSymbols(data.active_symbols || []);
+          const syms = data.active_symbols || [];
+          setSymbols(syms);
           setLoading(false);
+          // Auto-select first symbol in group
+          const firstInGroup = syms.find(
+            (s: DerivActiveSymbol) =>
+              s.market === selectedGroup || s.subgroup === selectedGroup
+          );
+          if (firstInGroup && !selectedSymbol) {
+            setSelectedSymbol(firstInGroup.symbol);
+          }
         })
         .catch(() => setLoading(false));
     }
-  }, [connectionStatus, send]);
+  }, [connectionStatus, send, selectedGroup, selectedSymbol]);
 
-  // Generate initial mock data when symbol is selected
+  // Fetch real candles when symbol or timeframe changes
+  const fetchCandles = useCallback(
+    async (symbol: string, tf: typeof TIMEFRAMES[0]) => {
+      setCandlesLoading(true);
+      setCandlesError(null);
+      try {
+        const params = new URLSearchParams({
+          symbol,
+          granularity: String(tf.granularity),
+          count: String(tf.count),
+        });
+        const res = await fetch(`/api/markets/candles?${params}`);
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || "Failed to fetch candles");
+        }
+        const data = await res.json();
+        const formatted: CandlestickData<Time>[] = (data.candles || []).map(
+          (c: { epoch: number; open: number; high: number; low: number; close: number }) => ({
+            time: c.epoch as Time,
+            open: c.open,
+            high: c.high,
+            low: c.low,
+            close: c.close,
+          })
+        );
+        setCandles(formatted);
+      } catch (err: any) {
+        setCandlesError(err.message || "Failed to load chart data");
+        setCandles([]);
+      } finally {
+        setCandlesLoading(false);
+      }
+    },
+    []
+  );
+
+  // Fetch candles when symbol or timeframe changes
   useEffect(() => {
-    if (selectedSymbol && tickData.length === 0) {
-      setTickData(generateMockCandles(100));
+    if (selectedSymbol) {
+      fetchCandles(selectedSymbol, selectedTimeframe);
     }
-  }, [selectedSymbol, tickData.length]);
+  }, [selectedSymbol, selectedTimeframe, fetchCandles]);
 
-  // Update chart with live tick
+  // Update last candle with live tick
   useEffect(() => {
-    if (!lastTick?.tick || !selectedSymbol) return;
+    if (!lastTick?.tick || !selectedSymbol || candles.length === 0) return;
     const tick = lastTick.tick;
     if (tick.symbol !== selectedSymbol) return;
 
-    setTickData((prev) => {
+    setCandles((prev) => {
       if (prev.length === 0) return prev;
       const lastCandle = { ...prev[prev.length - 1] };
       const quote = tick.quote || 0;
 
-      // Update the last candle's close price
       lastCandle.close = Number(quote.toFixed(4));
       if (quote > lastCandle.high) lastCandle.high = lastCandle.close;
       if (quote < lastCandle.low) lastCandle.low = lastCandle.close;
 
       return [...prev.slice(0, -1), lastCandle];
     });
-  }, [lastTick, selectedSymbol]);
+  }, [lastTick, selectedSymbol, candles.length]);
 
   const filtered = useMemo(
     () =>
@@ -94,10 +125,13 @@ export default function MarketsPage() {
     [symbols, selectedGroup]
   );
 
-  const handleSelectSymbol = useCallback((symbol: string) => {
-    setSelectedSymbol(symbol);
-    setTickData(generateMockCandles(100));
-  }, []);
+  const handleSelectSymbol = useCallback(
+    (symbol: string) => {
+      setSelectedSymbol(symbol);
+      fetchCandles(symbol, selectedTimeframe);
+    },
+    [fetchCandles, selectedTimeframe]
+  );
 
   return (
     <div className="space-y-6">
@@ -111,11 +145,21 @@ export default function MarketsPage() {
       {/* Chart Panel */}
       {selectedSymbol && (
         <div className="stat-card p-4">
-          <TradingChart
-            symbol={selectedSymbol}
-            data={tickData}
-            height={380}
-          />
+          {candlesLoading ? (
+            <div className="flex items-center justify-center h-[380px]">
+              <div className="w-8 h-8 border-2 border-sentienx-brand border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : candlesError ? (
+            <div className="flex items-center justify-center h-[380px] text-sentienx-bear text-sm">
+              {candlesError}
+            </div>
+          ) : (
+            <TradingChart
+              symbol={selectedSymbol}
+              data={candles}
+              height={380}
+            />
+          )}
         </div>
       )}
 

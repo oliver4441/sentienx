@@ -23,6 +23,7 @@ import type {
   DerivActiveSymbol,
   DerivProposal,
   DerivBuy,
+  DerivCandlesResponse,
 } from "@/types/deriv"
 
 // ─── PKCE Helpers ─────────────────────────────────────────────────────────
@@ -504,5 +505,46 @@ export class DerivREST {
       balance: 1,
       subscribe: 0,
     })
+  }
+
+  /**
+   * Fetch historical candlestick data.
+   * @param symbol - e.g. "R_100", "frxEURUSD"
+   * @param granularity - seconds: 60, 120, 180, 300, 600, 900, 1800, 3600, 7200, 86400
+   * @param count - number of candles to fetch (max 5000)
+   * @param end - end epoch (optional, defaults to now)
+   */
+  async getCandles(
+    symbol: string,
+    granularity: number = 60,
+    count: number = 100,
+    end?: number
+  ): Promise<DerivCandlesResponse> {
+    const to = end || Math.floor(Date.now() / 1000)
+    const from = to - granularity * count
+
+    const response = await this.request<{
+      candles: Array<{
+        epoch: number
+        open: number
+        high: number
+        low: number
+        close: number
+      }>
+    }>("/trading/v1/options/candles", {
+      candles: 1,
+      symbol,
+      granularity,
+      start: from,
+      end: to,
+      count,
+      style: "candles",
+    })
+
+    return {
+      candles: response.candles,
+      granularity,
+      symbol,
+    }
   }
 }
