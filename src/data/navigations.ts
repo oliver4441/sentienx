@@ -40,6 +40,17 @@ export const navigationsData: NavigationType[] = [
     ],
   },
   {
+    title: "Games",
+    items: [
+      {
+        title: "Crash",
+        href: "/dashboard/crash",
+        iconName: "Rocket",
+        label: "HOT",
+      },
+    ],
+  },
+  {
     title: "Automation",
     items: [
       {

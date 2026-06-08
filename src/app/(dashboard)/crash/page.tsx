@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useAuth } from "@/contexts/auth-context";
 
 interface GameState {
@@ -27,7 +27,7 @@ interface GameState {
 }
 
 export default function CrashGamePage() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, accountInfo, accessToken } = useAuth();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animFrameRef = useRef<number>(0);
   const playerIdRef = useRef(Math.random().toString(36).substring(2, 10));
@@ -39,22 +39,56 @@ export default function CrashGamePage() {
   const [cashedOut, setCashedOut] = useState(false);
   const [lastProfit, setLastProfit] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [balance, setBalance] = useState<number>(0);
+  const [loading, setLoading] = useState(true);
 
-  // Track the current round ID to detect new rounds
   const lastRoundIdRef = useRef<string | null>(null);
+
+  // Get player name from Deriv account
+  const playerName = accountInfo?.authorize?.fullname ||
+    accountInfo?.authorize?.loginid ||
+    "Player";
+
+  // Fetch real balance from Deriv
+  const fetchBalance = useCallback(async () => {
+    if (!accessToken) return;
+    try {
+      const res = await fetch("/api/user/balance", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setBalance(data.balance ?? 0);
+      }
+    } catch {
+      // ignore
+    }
+  }, [accessToken]);
+
+  useEffect(() => {
+    if (isAuthenticated && accessToken) {
+      fetchBalance();
+      // Refresh balance every 10 seconds
+      const iv = setInterval(fetchBalance, 10000);
+      return () => clearInterval(iv);
+    }
+  }, [isAuthenticated, accessToken, fetchBalance]);
 
   // Poll game state
   useEffect(() => {
+    let alive = true;
+
     const poll = async () => {
       try {
         const res = await fetch("/api/crash");
+        if (!alive) return;
         const data: GameState = await res.json();
         setGameState(data);
+        setLoading(false);
 
         const currentRoundId = data.round?.id || null;
         const roundChanged = currentRoundId !== lastRoundIdRef.current;
 
-        // When a new round starts, reset player state
         if (roundChanged && data.round?.status === "waiting") {
           const myBet = data.bets.find((b) => b.playerId === playerIdRef.current);
           if (myBet) {
@@ -68,13 +102,14 @@ export default function CrashGamePage() {
           }
         }
 
-        // When round crashes, update final state
         if (data.round?.status === "crashed") {
           const myBet = data.bets.find((b) => b.playerId === playerIdRef.current);
           if (myBet) {
             setHasBet(true);
             setCashedOut(true);
             setLastProfit(myBet.profit);
+            // Refresh balance after round ends
+            fetchBalance();
           }
         }
 
@@ -86,19 +121,24 @@ export default function CrashGamePage() {
 
     poll();
     const interval = setInterval(poll, 250);
-    return () => clearInterval(interval);
-  }, []);
+    return () => { alive = false; clearInterval(interval); };
+  }, [fetchBalance]);
 
   // Place bet
   const placeBet = async () => {
     try {
       setError(null);
+      if (betAmount > balance) {
+        setError("Insufficient balance. Please deposit first.");
+        return;
+      }
       const res = await fetch("/api/crash", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "bet",
           playerId: playerIdRef.current,
+          playerName,
           amount: betAmount,
           autoCashout,
         }),
@@ -109,6 +149,7 @@ export default function CrashGamePage() {
       } else {
         setHasBet(true);
         setGameState(data.gameState);
+        setBalance((prev) => Math.max(0, prev - betAmount));
       }
     } catch {
       setError("Failed to place bet");
@@ -134,6 +175,8 @@ export default function CrashGamePage() {
         setCashedOut(true);
         setLastProfit(data.profit);
         setGameState(data.gameState);
+        // Refresh balance after cashout
+        setTimeout(fetchBalance, 500);
       }
     } catch {
       setError("Failed to cash out");
@@ -176,7 +219,7 @@ export default function CrashGamePage() {
         ctx.fillStyle = "#666";
         ctx.font = "24px monospace";
         ctx.textAlign = "center";
-        ctx.fillText("Connecting to Deriv...", w / 2, h / 2);
+        ctx.fillText(loading ? "Connecting to Deriv..." : "Waiting for round...", w / 2, h / 2);
         animFrameRef.current = requestAnimationFrame(render);
         return;
       }
@@ -270,7 +313,7 @@ export default function CrashGamePage() {
 
     animFrameRef.current = requestAnimationFrame(render);
     return () => cancelAnimationFrame(animFrameRef.current);
-  }, [gameState, hasBet, cashedOut, lastProfit, betAmount]);
+  }, [gameState, hasBet, cashedOut, lastProfit, betAmount, loading]);
 
   if (!isAuthenticated) {
     return (
@@ -288,6 +331,7 @@ export default function CrashGamePage() {
 
   const currentMultiplier = gameState?.round?.multiplier || 1;
   const potentialProfit = betAmount * (currentMultiplier - 1);
+  const currency = accountInfo?.authorize?.currency || "USD";
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white p-4">
@@ -295,10 +339,16 @@ export default function CrashGamePage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">🚀 Crash Game</h1>
-          <div className="flex items-center gap-4 text-sm text-gray-400">
-            <span>Players: {gameState?.totalPlayers || 0}</span>
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-green-400">Live</span>
+          <div className="flex items-center gap-4 text-sm">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#111118] border border-[#1a1a2e]">
+              <span className="text-gray-400">Balance:</span>
+              <span className="text-green-400 font-bold">{currency} {balance.toFixed(2)}</span>
+            </div>
+            <div className="flex items-center gap-2 text-gray-400">
+              <span>Players: {gameState?.totalPlayers || 0}</span>
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-green-400">Live</span>
+            </div>
             <span className="text-xs text-gray-600">Powered by Deriv</span>
           </div>
         </div>
@@ -319,25 +369,34 @@ export default function CrashGamePage() {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {/* Bet Amount */}
                 <div>
-                  <label className="text-sm text-gray-400 block mb-1">Bet Amount ($)</label>
+                  <label className="text-sm text-gray-400 block mb-1">Bet Amount ({currency})</label>
                   <input
                     type="number"
                     value={betAmount}
                     onChange={(e) => setBetAmount(Math.max(1, Number(e.target.value)))}
                     disabled={hasBet}
                     min={1}
+                    max={balance}
                     className="w-full bg-[#0a0a0f] border border-[#1a1a2e] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-sentienx-brand disabled:opacity-50"
                   />
                   <div className="flex gap-1 mt-2 flex-wrap">
                     {[1, 5, 10, 25, 50, 100].map((a) => (
                       <button
                         key={a}
-                        onClick={() => !hasBet && setBetAmount(a)}
-                        className="px-2 py-1 rounded bg-[#1a1a2e] text-xs hover:bg-[#2a2a3e] transition-colors"
+                        onClick={() => !hasBet && setBetAmount(Math.min(a, balance))}
+                        disabled={hasBet}
+                        className="px-2 py-1 rounded bg-[#1a1a2e] text-xs hover:bg-[#2a2a3e] transition-colors disabled:opacity-40"
                       >
-                        ${a}
+                        {currency}{a}
                       </button>
                     ))}
+                    <button
+                      onClick={() => !hasBet && setBetAmount(Math.floor(balance))}
+                      disabled={hasBet || balance <= 0}
+                      className="px-2 py-1 rounded bg-sentienx-brand/20 text-sentienx-brand text-xs hover:bg-sentienx-brand/30 transition-colors disabled:opacity-40"
+                    >
+                      MAX
+                    </button>
                   </div>
                 </div>
 
@@ -371,10 +430,10 @@ export default function CrashGamePage() {
                 <div className="flex items-end">
                   <button
                     onClick={placeBet}
-                    disabled={hasBet || gameState?.round?.status === "running"}
+                    disabled={hasBet || gameState?.round?.status === "running" || betAmount > balance || betAmount <= 0}
                     className="w-full py-3 rounded-lg bg-sentienx-brand hover:bg-sentienx-brand-dark text-white font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {hasBet ? "✓ Bet Placed" : `Place Bet $${betAmount}`}
+                    {hasBet ? "✓ Bet Placed" : `Place Bet ${currency}${betAmount}`}
                   </button>
                 </div>
 
@@ -387,10 +446,10 @@ export default function CrashGamePage() {
                   >
                     {cashedOut
                       ? lastProfit !== null && lastProfit >= 0
-                        ? `+$${lastProfit.toFixed(2)}`
-                        : `-$${betAmount.toFixed(2)}`
+                        ? `+${currency}${lastProfit.toFixed(2)}`
+                        : `-${currency}${betAmount.toFixed(2)}`
                       : gameState?.round?.status === "running"
-                        ? `💰 CASH OUT $${potentialProfit.toFixed(2)}`
+                        ? `💰 CASH OUT ${currency}${potentialProfit.toFixed(2)}`
                         : "💰 CASH OUT"}
                   </button>
                 </div>
@@ -423,7 +482,7 @@ export default function CrashGamePage() {
                       {bet.playerId === playerIdRef.current ? "You" : bet.playerName}
                     </span>
                     <div className="flex items-center gap-2">
-                      <span className="text-gray-400">${bet.amount}</span>
+                      <span className="text-gray-400">{currency}{bet.amount}</span>
                       {bet.cashedOutAt !== null && bet.cashedOutAt > 0 ? (
                         <span className="text-green-400 font-medium">@{bet.cashedOutAt.toFixed(2)}x</span>
                       ) : bet.cashedOutAt === -1 ? (
