@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
 
 interface GameState {
@@ -40,6 +40,9 @@ export default function CrashGamePage() {
   const [lastProfit, setLastProfit] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Track the current round ID to detect new rounds
+  const lastRoundIdRef = useRef<string | null>(null);
+
   // Poll game state
   useEffect(() => {
     const poll = async () => {
@@ -48,15 +51,16 @@ export default function CrashGamePage() {
         const data: GameState = await res.json();
         setGameState(data);
 
-        // Update bet state
-        if (data.round?.status === "waiting") {
+        const currentRoundId = data.round?.id || null;
+        const roundChanged = currentRoundId !== lastRoundIdRef.current;
+
+        // When a new round starts, reset player state
+        if (roundChanged && data.round?.status === "waiting") {
           const myBet = data.bets.find((b) => b.playerId === playerIdRef.current);
           if (myBet) {
             setHasBet(true);
-            if (myBet.cashedOutAt !== null && myBet.cashedOutAt !== undefined) {
-              setCashedOut(true);
-              setLastProfit(myBet.profit);
-            }
+            setCashedOut(false);
+            setLastProfit(null);
           } else {
             setHasBet(false);
             setCashedOut(false);
@@ -64,14 +68,17 @@ export default function CrashGamePage() {
           }
         }
 
-        // Reset on new round after crash
+        // When round crashes, update final state
         if (data.round?.status === "crashed") {
           const myBet = data.bets.find((b) => b.playerId === playerIdRef.current);
-          if (myBet && myBet.cashedOutAt !== null && myBet.cashedOutAt !== undefined) {
+          if (myBet) {
+            setHasBet(true);
             setCashedOut(true);
             setLastProfit(myBet.profit);
           }
         }
+
+        lastRoundIdRef.current = currentRoundId;
       } catch {
         // ignore poll errors
       }
@@ -230,13 +237,16 @@ export default function CrashGamePage() {
         } else if (round.status === "crashed") {
           ctx.fillStyle = "#ff4444";
           ctx.fillText(`✗ CRASHED — Lost $${betAmount.toFixed(2)}`, w / 2, h / 2 + 55);
-        } else {
+        } else if (round.status === "running") {
           ctx.fillStyle = "#ffaa00";
           const currentProfit = betAmount * (multiplier - 1);
           ctx.fillText(
             `In game — $${currentProfit.toFixed(2)} if cashout now`,
             w / 2, h / 2 + 55
           );
+        } else {
+          ctx.fillStyle = "#ffaa00";
+          ctx.fillText(`Bet placed — $${betAmount.toFixed(2)}`, w / 2, h / 2 + 55);
         }
       }
 
@@ -414,8 +424,10 @@ export default function CrashGamePage() {
                     </span>
                     <div className="flex items-center gap-2">
                       <span className="text-gray-400">${bet.amount}</span>
-                      {bet.cashedOutAt ? (
+                      {bet.cashedOutAt !== null && bet.cashedOutAt > 0 ? (
                         <span className="text-green-400 font-medium">@{bet.cashedOutAt.toFixed(2)}x</span>
+                      ) : bet.cashedOutAt === -1 ? (
+                        <span className="text-red-400">Lost</span>
                       ) : gameState?.round?.status === "crashed" ? (
                         <span className="text-red-400">Lost</span>
                       ) : gameState?.round?.status === "running" ? (

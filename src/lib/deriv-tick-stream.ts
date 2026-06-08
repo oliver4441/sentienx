@@ -2,88 +2,99 @@
  * Server-side Deriv Tick Stream
  *
  * Maintains a persistent WebSocket connection to Deriv's public API
- * and provides the latest tick data for the crash game engine.
+ * using the `ws` package (Node.js WebSocket client).
  *
  * This runs at module level in the Next.js server, so it persists
  * across API route invocations within the same server process.
+ *
+ * Auto-reconnects with exponential backoff.
  */
 
-import { DERIV_CONFIG } from "@/lib/constants";
 import type { DerivTick } from "@/types/deriv";
 
 type TickCallback = (tick: DerivTick) => void;
 
-let ws: WebSocket | null = null;
+// Dynamic import for ws to avoid bundling issues
+let wsInstance: WebSocket | null = null;
 let latestTick: DerivTick | null = null;
 let listeners: TickCallback[] = [];
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let isConnecting = false;
-let subscribedSymbols = new Set<string>();
+const subscribedSymbols: string[] = [];
 
 const RECONNECT_DELAYS = [1000, 2000, 4000, 8000, 16000];
 let reconnectAttempt = 0;
 
 function connect() {
-  if (isConnecting || ws?.readyState === WebSocket.OPEN) return;
+  if (isConnecting) return;
   isConnecting = true;
 
-  try {
-    ws = new WebSocket(DERIV_CONFIG.wsPublic);
-
-    ws.onopen = () => {
-      isConnecting = false;
-      reconnectAttempt = 0;
-
-      // Re-subscribe to symbols
-      for (const symbol of subscribedSymbols) {
-        ws?.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
-      }
-    };
-
-    ws.onmessage = (event) => {
+  import("ws")
+    .then(({ WebSocket: WS }) => {
       try {
-        const data = JSON.parse(event.data);
-        if (data.msg_type === "tick") {
-          const tick: DerivTick = { tick: data.tick };
-          latestTick = tick;
-          // Notify all listeners
-          for (const cb of listeners) {
-            try {
-              cb(tick);
-            } catch {
-              // ignore listener errors
-            }
+        wsInstance = new WS(
+          "wss://ws.derivws.com/websockets/v3"
+        ) as unknown as WebSocket;
+
+        wsInstance.onopen = () => {
+          isConnecting = false;
+          reconnectAttempt = 0;
+
+          // Subscribe to symbols
+          for (const symbol of subscribedSymbols) {
+            wsInstance?.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
           }
-        }
-      } catch {
-        // ignore parse errors
-      }
-    };
+        };
 
-    ws.onclose = () => {
+        wsInstance.onmessage = (event: MessageEvent) => {
+          try {
+            const parsed = JSON.parse(event.data as string);
+            if (parsed.msg_type === "tick") {
+              const tick: DerivTick = { tick: parsed.tick };
+              latestTick = tick;
+              for (const cb of listeners) {
+                try {
+                  cb(tick);
+                } catch {
+                  // ignore listener errors
+                }
+              }
+            }
+          } catch {
+            // ignore parse errors
+          }
+        };
+
+        wsInstance.onclose = () => {
+          isConnecting = false;
+          wsInstance = null;
+          scheduleReconnect();
+        };
+
+        wsInstance.onerror = () => {
+          isConnecting = false;
+          try {
+            wsInstance?.close();
+          } catch {
+            // ignore
+          }
+          wsInstance = null;
+        };
+      } catch {
+        isConnecting = false;
+        scheduleReconnect();
+      }
+    })
+    .catch(() => {
       isConnecting = false;
-      ws = null;
       scheduleReconnect();
-    };
-
-    ws.onerror = () => {
-      isConnecting = false;
-      try {
-        ws?.close();
-      } catch {
-        // ignore
-      }
-      ws = null;
-    };
-  } catch {
-    isConnecting = false;
-    scheduleReconnect();
-  }
+    });
 }
 
 function scheduleReconnect() {
   if (reconnectTimer) clearTimeout(reconnectTimer);
-  const delay = RECONNECT_DELAYS[Math.min(reconnectAttempt, RECONNECT_DELAYS.length - 1)];
+  const delay =
+    RECONNECT_DELAYS[Math.min(reconnectAttempt, RECONNECT_DELAYS.length - 1)];
   reconnectAttempt++;
   reconnectTimer = setTimeout(() => {
     connect();
@@ -117,9 +128,12 @@ export function getLatestTick(): DerivTick | null {
  * Subscribe to a specific symbol's tick stream.
  */
 export function subscribeSymbol(symbol: string) {
-  subscribedSymbols.add(symbol);
-  if (ws?.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
+  if (!subscribedSymbols.includes(symbol)) {
+    subscribedSymbols.push(symbol);
+  }
+  if (wsInstance?.readyState === 1) {
+    // WebSocket.OPEN === 1
+    wsInstance.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
   } else if (!isConnecting) {
     connect();
   }
@@ -129,10 +143,12 @@ export function subscribeSymbol(symbol: string) {
  * Ensure we're connected and subscribed to at least one symbol.
  */
 export function ensureConnection(symbol: string = "R_100") {
-  subscribedSymbols.add(symbol);
-  if (!ws || ws.readyState !== WebSocket.OPEN) {
+  if (!subscribedSymbols.includes(symbol)) {
+    subscribedSymbols.push(symbol);
+  }
+  if (!wsInstance || wsInstance.readyState !== 1) {
     connect();
   } else {
-    ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
+    wsInstance.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
   }
 }

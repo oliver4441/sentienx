@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import {
   GameState,
-  CrashRound,
   PlayerBet,
   createRound,
   calculateMultiplier,
@@ -24,24 +23,28 @@ let tickInterval: ReturnType<typeof setInterval> | null = null;
 // Ensure Deriv WS connection is active
 ensureConnection("R_100");
 subscribeSymbol("R_100");
-subscribeSymbol("1HZ100V");
 
-// Generate a tick — uses real Deriv data when available
+/**
+ * Get the latest tick for seeding a new round.
+ * Falls back to a time-based tick if WS isn't connected yet.
+ */
 function getGameTick(): DerivTick {
   const realTick = getLatestTick();
   if (realTick) {
     return realTick;
   }
-  // Fallback to deterministic seed from time if WS not ready yet
-  const epoch = Math.floor(Date.now() / 1000);
+
+  // Fallback: generate a tick from current time
+  const now = Date.now();
+  const epoch = Math.floor(now / 1000);
   return {
     tick: {
       ask: 0,
       bid: 0,
       epoch,
-      id: `fallback-${epoch}`,
+      id: `local-${epoch}`,
       pip_size: 2,
-      quote: 50000 + (epoch % 1000),
+      quote: 50000 + (epoch % 10000) / 100,
       symbol: "R_100",
     },
   };
@@ -55,6 +58,7 @@ async function startNewRound() {
   gameState.round = round;
   gameState.bets = [];
   gameState.countdown = 5;
+  gameState.totalPlayers = 0;
 
   // Countdown
   let countdown = 5;
@@ -64,6 +68,7 @@ async function startNewRound() {
 
     if (countdown <= 0) {
       if (roundTimer) clearInterval(roundTimer);
+      roundTimer = null;
       runRound();
     }
   }, 1000);
@@ -83,14 +88,12 @@ function runRound() {
     gameState.round.multiplier = multiplier;
 
     // Auto-cashout for players with auto-cashout set
-    if (gameState.round.status === "running") {
-      gameState.bets.forEach((bet) => {
-        if (!bet.cashedOutAt && bet.autoCashout && multiplier >= bet.autoCashout) {
-          bet.cashedOutAt = multiplier;
-          bet.profit = bet.amount * (multiplier - 1);
-        }
-      });
-    }
+    gameState.bets.forEach((bet) => {
+      if (bet.cashedOutAt === null && bet.autoCashout && multiplier >= bet.autoCashout) {
+        bet.cashedOutAt = multiplier;
+        bet.profit = bet.amount * (multiplier - 1);
+      }
+    });
 
     // Check crash
     if (multiplier >= gameState.round.crashPoint) {
@@ -114,8 +117,8 @@ async function crashRound() {
 
   // Mark players who didn't cash out as losers
   gameState.bets.forEach((bet) => {
-    if (!bet.cashedOutAt) {
-      bet.cashedOutAt = 0; // Lost
+    if (bet.cashedOutAt === null) {
+      bet.cashedOutAt = -1; // -1 = lost
       bet.profit = -bet.amount;
     }
   });
@@ -158,6 +161,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Round already started" }, { status: 400 });
     }
 
+    // Check if player already has a bet this round
+    const existingBet = gameState.bets.find((b) => b.playerId === playerId);
+    if (existingBet) {
+      return NextResponse.json({ error: "Already placed a bet this round" }, { status: 400 });
+    }
+
     const bet: PlayerBet = {
       playerId: playerId || Math.random().toString(36).substring(2, 10),
       playerName: playerName || "Anonymous",
@@ -178,7 +187,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Round not running" }, { status: 400 });
     }
 
-    const bet = gameState.bets.find((b) => b.playerId === playerId && !b.cashedOutAt);
+    const bet = gameState.bets.find((b) => b.playerId === playerId && b.cashedOutAt === null);
     if (!bet) {
       return NextResponse.json({ error: "No active bet found" }, { status: 400 });
     }
