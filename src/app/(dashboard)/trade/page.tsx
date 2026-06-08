@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useDerivWS } from "@/hooks/use-deriv-ws";
+import { DERIV_CONFIG } from "@/lib/constants";
 import type { DerivProposal, DerivWSResponse } from "@/types/deriv";
 
 const CONTRACT_TYPES = [
@@ -35,11 +36,13 @@ export default function TradePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const markup = DERIV_CONFIG.markup;
+
   const getProposal = async () => {
     setLoading(true);
     setError(null);
     try {
-      const result = await send({
+      const request: Record<string, unknown> = {
         proposal: 1,
         contract_type: contractType,
         symbol: symbol,
@@ -48,7 +51,14 @@ export default function TradePage() {
         amount: stake,
         basis: "stake",
         currency: "USD",
-      }) as DerivWSResponse<DerivProposal>;
+      };
+
+      // Add markup if configured
+      if (markup > 0) {
+        request.markup = markup;
+      }
+
+      const result = await send(request) as DerivWSResponse<DerivProposal>;
       if (result.proposal) {
         setProposal(result as unknown as DerivProposal);
       } else if (result.error) {
@@ -81,12 +91,22 @@ export default function TradePage() {
     setLoading(false);
   };
 
+  // Calculate markup-adjusted values
+  const rawPayout = proposal?.proposal?.payout || 0;
+  const markupAmount = rawPayout * (markup / 100);
+  const adjustedPayout = rawPayout - markupAmount;
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Trade</h1>
         <p className="text-sentienx-text-muted mt-1">
           Execute trades on Deriv markets
+          {markup > 0 && (
+            <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-sentienx-brand/10 text-sentienx-brand">
+              {markup}% markup active
+            </span>
+          )}
         </p>
       </div>
 
@@ -210,9 +230,23 @@ export default function TradePage() {
                   <span className="tabular-nums">${stake.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-sentienx-text-muted">Payout</span>
-                  <span className="tabular-nums text-sentienx-bull">
-                    ${proposal.proposal?.payout?.toFixed(2)}
+                  <span className="text-sentienx-text-muted">Raw Payout</span>
+                  <span className="tabular-nums text-sentienx-text-dim line-through">
+                    ${rawPayout.toFixed(2)}
+                  </span>
+                </div>
+                {markup > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-sentienx-text-muted">Markup ({markup}%)</span>
+                    <span className="tabular-nums text-sentienx-brand">
+                      -${markupAmount.toFixed(2)}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm">
+                  <span className="text-sentienx-text-muted">Your Payout</span>
+                  <span className="tabular-nums text-sentienx-bull font-bold">
+                    ${adjustedPayout.toFixed(2)}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -258,6 +292,17 @@ export default function TradePage() {
               </span>
             </div>
           </div>
+
+          {/* Markup Info */}
+          {markup > 0 && (
+            <div className="stat-card">
+              <h4 className="text-sm font-medium text-sentienx-brand mb-2">💰 Markup Active</h4>
+              <p className="text-xs text-sentienx-text-muted">
+                You earn {markup}% markup on every trade. This is automatically
+                deducted from the user&apos;s potential payout and credited to your account.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

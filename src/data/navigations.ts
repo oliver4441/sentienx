@@ -40,6 +40,22 @@ export const navigationsData: NavigationType[] = [
     ],
   },
   {
+    title: "Affiliates",
+    items: [
+      {
+        title: "Affiliate Hub",
+        href: "/dashboard/affiliate",
+        iconName: "DollarSign",
+        label: "EARN",
+      },
+      {
+        title: "Earnings",
+        href: "/dashboard/earnings",
+        iconName: "Banknote",
+      },
+    ],
+  },
+  {
     title: "Games",
     items: [
       {
