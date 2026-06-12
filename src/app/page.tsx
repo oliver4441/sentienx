@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { LiveTicker } from "@/components/landing/ticker";
+import { Testimonials } from "@/components/landing/testimonials";
+import { CourseSection } from "@/components/landing/course";
 import { LandingStats } from "./stats";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Sentienx — Deriv Trading Platform | Earn Up to 45% Commission",
+  title: "Sentienx — Deriv Trading SaaS Platform | Earn Up to 45% Commission",
   description:
     "Trade Deriv markets with a powerful, custom trading interface. Earn up to 45% affiliate commission, run automated bots, and manage your bankroll. Free to get started.",
 };
@@ -13,7 +16,10 @@ export const metadata: Metadata = {
 export default function LandingPage() {
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Navbar */}
+      {/* ═══ Live Ticker Tape ═══ */}
+      <LiveTicker />
+
+      {/* ═══ Navbar ═══ */}
       <nav className="border-b border-white/[0.06] bg-[#070709]/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -22,60 +28,67 @@ export default function LandingPage() {
             </div>
             <span className="text-xl font-bold text-[#f4f4f5]">Sentienx</span>
           </div>
-          <div className="flex items-center gap-4">
-            <a
-              href="/login"
-              className="text-sm text-[#a1a1aa] hover:text-[#f4f4f5] transition-colors"
-            >
+          <div className="flex items-center gap-6">
+            <a href="#features" className="text-sm text-[#a1a1aa] hover:text-[#f4f4f5] transition-colors">
+              Features
+            </a>
+            <a href="#earn" className="text-sm text-[#a1a1aa] hover:text-[#f4f4f5] transition-colors">
+              Earn
+            </a>
+            <a href="#course" className="text-sm text-[#a1a1aa] hover:text-[#f4f4f5] transition-colors">
+              Academy
+            </a>
+            <a href="/login" className="text-sm text-[#a1a1aa] hover:text-[#f4f4f5] transition-colors">
               Sign In
             </a>
-            <a
-              href="/register"
-              className="px-4 py-2 text-sm font-medium rounded-lg bg-[#6366f1] hover:bg-[#4f46e5] text-white transition-colors"
-            >
+            <a href="/register" className="px-4 py-2 text-sm font-medium rounded-lg bg-[#6366f1] hover:bg-[#4f46e5] text-white transition-colors">
               Get Started Free
             </a>
           </div>
         </div>
       </nav>
 
-      {/* Hero */}
+      {/* ═══ Hero ═══ */}
       <main className="flex-1">
-        <section className="flex items-center justify-center px-6 py-20 md:py-28">
-          <div className="max-w-4xl text-center space-y-8">
+        <section className="relative flex items-center justify-center px-6 py-20 md:py-28 overflow-hidden">
+          {/* Background glow */}
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_#6366f1_0%,_transparent_70%)] opacity-[0.04]" />
+
+          <div className="relative max-w-4xl text-center space-y-8">
             <div className="space-y-4">
               {/* Social proof badge */}
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#6366f1]/10 border border-[#6366f1]/20">
                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                 <span className="text-sm text-[#6366f1] font-medium">
-                  Earn up to 45% commission on every trade
+                  Earn up to 45% commission on every trade — Join 5,000+ traders
                 </span>
               </div>
               <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-[#f4f4f5]">
                 Trade{" "}
                 <span className="text-[#6366f1]">Deriv</span>
                 <br />
-                Your Way
+                <span className="bg-gradient-to-r from-[#6366f1] to-[#818cf8] bg-clip-text text-transparent">
+                  Your Way
+                </span>
               </h1>
               <p className="text-lg md:text-xl text-[#a1a1aa] max-w-2xl mx-auto leading-relaxed">
-                A powerful trading platform with automated bots, real-time
-                analytics, trading academy, and bankroll management — all in one
-                place. Free to start earning.
+                The all-in-one Deriv trading platform — automated bots, real-time
+                analytics, trading academy, and bankroll management. Start earning today.
               </p>
             </div>
 
             <div className="flex items-center justify-center gap-4">
               <a
                 href="/register"
-                className="px-8 py-3 text-base font-medium rounded-xl bg-[#6366f1] hover:bg-[#4f46e5] text-white transition-all hover:shadow-lg hover:shadow-[#6366f1]/25"
+                className="px-8 py-3.5 text-base font-medium rounded-xl bg-[#6366f1] hover:bg-[#4f46e5] text-white transition-all hover:shadow-lg hover:shadow-[#6366f1]/25"
               >
                 Start Trading Free
               </a>
               <a
-                href="#earn"
-                className="px-8 py-3 text-base font-medium rounded-xl border border-white/[0.06] hover:border-white/[0.12] text-[#f4f4f5] transition-colors"
+                href="#course"
+                className="px-8 py-3.5 text-base font-medium rounded-xl border border-white/[0.06] hover:border-white/[0.12] text-[#f4f4f5] transition-colors"
               >
-                Learn How to Earn
+                Explore the Course ↓
               </a>
             </div>
 
@@ -106,10 +119,10 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Live Stats */}
+        {/* ═══ Live Stats ═══ */}
         <LandingStats />
 
-        {/* How You Earn Section */}
+        {/* ═══ How You Earn Section ═══ */}
         <section id="earn" className="border-t border-white/[0.06] py-24 px-6 bg-gradient-to-b from-transparent to-[#6366f1]/[0.02]">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-16">
@@ -117,12 +130,12 @@ export default function LandingPage() {
                 Multiple Ways to Earn
               </h2>
               <p className="text-lg text-[#a1a1aa] max-w-2xl mx-auto">
-                Sentienx gives you powerful tools to generate revenue from Deriv markets
+                Sentienx gives you powerful tools to generate revenue from Deriv markets — whether you trade or refer.
               </p>
             </div>
 
+            {/* Affiliate Commissions */}
             <div className="grid md:grid-cols-3 gap-6">
-              {/* Affiliate Commissions */}
               <div className="rounded-2xl border border-[#6366f1]/20 p-8 bg-gradient-to-b from-[#6366f1]/5 to-transparent space-y-4">
                 <div className="w-12 h-12 rounded-xl bg-[#6366f1]/10 flex items-center justify-center">
                   <svg className="w-6 h-6 text-[#6366f1]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -216,15 +229,18 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Features */}
-        <section
-          id="features"
-          className="border-t border-white/[0.06] py-24 px-6"
-        >
+        {/* ═══ Testimonials Carousel ═══ */}
+        <Testimonials />
+
+        {/* ═══ Features ═══ */}
+        <section id="features" className="border-t border-white/[0.06] py-24 px-6">
           <div className="max-w-6xl mx-auto">
-            <h2 className="text-3xl font-bold text-center text-[#f4f4f5] mb-16">
+            <h2 className="text-3xl font-bold text-center text-[#f4f4f5] mb-4">
               Everything You Need to Trade
             </h2>
+            <p className="text-[#a1a1aa] text-center mb-16 max-w-xl mx-auto">
+              A complete Deriv trading workspace — bots, charts, analytics, academy, and bankroll management in one platform.
+            </p>
             <div className="grid md:grid-cols-3 gap-6">
               {features.map((feature, i) => (
                 <div
@@ -246,7 +262,10 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* CTA Section */}
+        {/* ═══ Free Course Section ═══ */}
+        <CourseSection />
+
+        {/* ═══ Final CTA ═══ */}
         <section className="border-t border-white/[0.06] py-24 px-6 bg-gradient-to-b from-[#6366f1]/[0.03] to-transparent">
           <div className="max-w-3xl mx-auto text-center space-y-6">
             <h2 className="text-3xl md:text-4xl font-bold text-[#f4f4f5]">
@@ -277,7 +296,7 @@ export default function LandingPage() {
         </section>
       </main>
 
-      {/* Footer */}
+      {/* ═══ Footer ═══ */}
       <footer className="border-t border-white/[0.06] py-12 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
@@ -313,7 +332,7 @@ export default function LandingPage() {
               <ul className="space-y-2 text-xs text-[#71717a]">
                 <li><a href="#" className="hover:text-[#a1a1aa] transition-colors">Help Center</a></li>
                 <li><a href="#" className="hover:text-[#a1a1aa] transition-colors">Contact Us</a></li>
-                <li><a href="#" className="hover:text-[#a1a1aa] transition-colors">API Docs</a></li>
+                <li><a href="#" className="hover:text-[#a1a1aa] transition-colors">Telegram</a></li>
               </ul>
             </div>
           </div>
