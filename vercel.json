@@ -1,0 +1,17 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "pnpm build",
+  "devCommand": "pnpm dev",
+  "installCommand": "pnpm install --no-frozen-lockfile",
+  "outputDirectory": ".next",
+  "regions": ["iad1"],
+  "env": {
+    "NEXT_PUBLIC_APP_URL": "@app_url",
+    "DERIV_APP_ID": "@deriv_app_id",
+    "DERIV_AFFILIATE_TOKEN": "@deriv_affiliate_token",
+    "DERIV_REDIRECT_URI": "@deriv_redirect_uri",
+    "DERIV_MARKUP": "@deriv_markup",
+    "DATABASE_URL": "@database_url",
+    "COMPOSIO_API_KEY": "@composio_api_key"
+  }
+}
