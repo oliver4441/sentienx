@@ -48,9 +48,32 @@ export async function GET(request: NextRequest) {
 
   if (!code) {
     console.log("[Deriv Callback] No code received. Possible causes: already authorized, redirect_uri mismatch, or user cancelled");
-    return NextResponse.redirect(
-      new URL("/login?error=missing_code", request.url)
-    );
+    // Return debug info as JSON so we can see what happened
+    return NextResponse.json({
+      error: "missing_code",
+      hint: "Deriv redirected back without an authorization code",
+      possibleCauses: [
+        "User already authorized this app — Deriv skips the code on re-authorization",
+        "redirect_uri mismatch between app settings and OAuth request",
+        "User cancelled the authorization",
+        "The OAuth app is not properly configured on Deriv",
+      ],
+      debug: {
+        fullUrl: request.url,
+        params: Object.fromEntries(searchParams.entries()),
+        hasState: !!state,
+        hasError: !!error,
+        cookies: {
+          oauthState: request.cookies.get("deriv_oauth_state")?.value || null,
+          codeVerifier: request.cookies.get("deriv_code_verifier")?.value ? "present" : null,
+        },
+        config: {
+          clientId: DERIV_CONFIG.appId,
+          redirectUri: DERIV_CONFIG.redirectUri,
+          oauthUrl: DERIV_CONFIG.oauthUrl,
+        },
+      },
+    }, { status: 400 });
   }
 
   // Verify state to prevent CSRF
