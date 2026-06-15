@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { DERIV_CONFIG } from "@/lib/constants";
 
+export const dynamic = "force-dynamic";
+
 async function getAccountInfo(accessToken: string) {
   try {
     const res = await fetch(
