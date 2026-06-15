@@ -85,7 +85,7 @@ function buildAuthUrl(codeChallenge: string, state: string, isRegistration: bool
     app_id: String(DERIV_CONFIG.appId),
     redirect_uri: DERIV_CONFIG.redirectUri,
     response_type: "code",
-    scope: "read trade payments admin",
+    scope: "read trade payments",
     code_challenge: codeChallenge,
     code_challenge_method: "S256",
     state: state,

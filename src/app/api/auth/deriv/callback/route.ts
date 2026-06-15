@@ -78,9 +78,9 @@ export async function GET(request: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Token exchange failed:", errorText);
+      console.error("Token exchange failed:", response.status, errorText);
       return NextResponse.redirect(
-        new URL("/login?error=token_exchange_failed", request.url)
+        new URL(`/login?error=token_exchange_failed&code=derivauth${response.status}`, request.url)
       );
     }
 
