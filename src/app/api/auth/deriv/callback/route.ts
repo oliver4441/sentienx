@@ -32,14 +32,22 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get("code");
   const state = searchParams.get("state");
   const error = searchParams.get("error");
+  const errorDescription = searchParams.get("error_description");
+
+  // Log everything Deriv sends us
+  console.log("[Deriv Callback] Full URL:", request.url);
+  console.log("[Deriv Callback] Params:", Object.fromEntries(searchParams.entries()));
+  console.log("[Deriv Callback] Has code:", !!code, "| Has error:", !!error, "| Has state:", !!state);
 
   if (error) {
+    console.log("[Deriv Callback] Error from Deriv:", error, errorDescription);
     return NextResponse.redirect(
-      new URL(`/login?error=${encodeURIComponent(error)}`, request.url)
+      new URL(`/login?error=${encodeURIComponent(errorDescription || error)}`, request.url)
     );
   }
 
   if (!code) {
+    console.log("[Deriv Callback] No code received. Possible causes: already authorized, redirect_uri mismatch, or user cancelled");
     return NextResponse.redirect(
       new URL("/login?error=missing_code", request.url)
     );
