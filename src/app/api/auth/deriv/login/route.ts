@@ -94,7 +94,9 @@ function buildAuthUrl(codeChallenge: string, state: string, isRegistration: bool
   });
 
   // Legacy app_id parameter (required for Deriv API app routing)
-  params.append("app_id", String(DERIV_CONFIG.appId));
+  if (DERIV_CONFIG.legacyAppId) {
+    params.append("app_id", String(DERIV_CONFIG.legacyAppId));
+  }
 
   // Show sign-up form instead of login for new users
   if (isRegistration) {

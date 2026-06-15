@@ -21,8 +21,12 @@
 
 export const DERIV_CONFIG = {
   // Your Deriv OAuth2 client ID (from https://developers.deriv.com OAuth2 app registration)
-  // This is DIFFERENT from the legacy API app_id
+  // This is used as `client_id` in OAuth2 authorization requests
   appId: process.env.DERIV_APP_ID || "33yGXwuCJ9zBbDXvIJn9A",
+
+  // Your legacy Deriv API app ID — sent as `app_id` parameter in OAuth2 requests
+  // so Deriv can route users to the correct API version
+  legacyAppId: process.env.DERIV_LEGACY_APP_ID || "113241",
 
   // Partner referral token — the value from your Deriv Partners referral link
   // For track.deriv.com links: use the full path segment (e.g., nXuHksD9Gfb1hit6RV3zsGNd7ZgqdRLk)
