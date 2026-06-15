@@ -1,118 +1,80 @@
-"use client";
+import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import { DERIV_CONFIG } from "@/lib/constants";
 
-import { useAuth } from "@/contexts/auth-context";
-import { useDerivWS } from "@/hooks/use-deriv-ws";
-
-function StatCard({
-  label,
-  value,
-  change,
-  changeType,
-}: {
-  label: string;
-  value: string;
-  change?: string;
-  changeType?: "positive" | "negative" | "neutral";
-}) {
-  return (
-    <div className="stat-card">
-      <p className="text-sm text-sentienx-text-muted mb-1">{label}</p>
-      <p className="text-2xl font-bold tabular-nums">{value}</p>
-      {change && (
-        <p
-          className={`text-sm mt-1 ${
-            changeType === "positive"
-              ? "text-sentienx-bull"
-              : changeType === "negative"
-              ? "text-sentienx-bear"
-              : "text-sentienx-text-dim"
-          }`}
-        >
-          {change}
-        </p>
-      )}
-    </div>
-  );
+async function getAccountInfo(accessToken: string) {
+  try {
+    const res = await fetch(
+      `${DERIV_CONFIG.apiBase}/trading/v1/options/authorize`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+          "Deriv-App-ID": String(DERIV_CONFIG.appId),
+        },
+        body: JSON.stringify({ authorize: accessToken }),
+      }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      return data.authorize || null;
+    }
+  } catch {
+    // ignore
+  }
+  return null;
 }
 
-export default function DashboardPage() {
-  const { accountInfo } = useAuth();
-  const { connectionStatus, lastTick } = useDerivWS({ autoConnect: true });
+export default async function DashboardPage() {
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get("deriv_access_token")?.value;
 
-  const balance = accountInfo?.authorize?.balance || 0;
-  const currency = accountInfo?.authorize?.currency || "USD";
-  const fullname = accountInfo?.authorize?.fullname || "Trader";
-  const isVirtual = accountInfo?.authorize?.is_virtual === 1;
+  if (!accessToken) {
+    redirect("/login");
+  }
+
+  const accountInfo = await getAccountInfo(accessToken);
+  const fullname = accountInfo?.fullname || "Trader";
+  const currency = accountInfo?.currency || "USD";
+  const balance = accountInfo?.balance || 0;
+  const isVirtual = accountInfo?.is_virtual === 1;
 
   return (
     <div className="space-y-6">
-      {/* Welcome */}
       <div>
         <h1 className="text-2xl font-bold">
           Welcome back, {fullname.split(" ")[0]}
         </h1>
         <p className="text-sentienx-text-muted mt-1">
           {isVirtual ? "Demo Account" : "Real Account"} —{" "}
-          {connectionStatus === "connected" ? (
-            <span className="text-sentienx-bull">Connected to Deriv</span>
-          ) : (
-            <span className="text-sentienx-text-dim">Connecting...</span>
-          )}
+          <span className="text-sentienx-bull">Connected to Deriv</span>
         </p>
       </div>
 
-      {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          label="Account Balance"
-          value={`${currency} ${balance.toFixed(2)}`}
-          change="Live"
-          changeType="neutral"
-        />
-        <StatCard
-          label="Open Positions"
-          value="0"
-          change="No active trades"
-          changeType="neutral"
-        />
-        <StatCard
-          label="Today's P&L"
-          value={`${currency} 0.00`}
-          change="0.00%"
-          changeType="neutral"
-        />
-        <StatCard
-          label="Win Rate"
-          value="—"
-          change="Start trading to see stats"
-          changeType="neutral"
-        />
+        <div className="stat-card">
+          <p className="text-sm text-sentienx-text-muted mb-1">Account Balance</p>
+          <p className="text-2xl font-bold tabular-nums">{currency} {Number(balance).toFixed(2)}</p>
+          <p className="text-sm mt-1 text-sentienx-text-dim">Live</p>
+        </div>
+        <div className="stat-card">
+          <p className="text-sm text-sentienx-text-muted mb-1">Open Positions</p>
+          <p className="text-2xl font-bold tabular-nums">0</p>
+          <p className="text-sm mt-1 text-sentienx-text-dim">No active trades</p>
+        </div>
+        <div className="stat-card">
+          <p className="text-sm text-sentienx-text-muted mb-1">Today&apos;s P&amp;L</p>
+          <p className="text-2xl font-bold tabular-nums">{currency} 0.00</p>
+          <p className="text-sm mt-1 text-sentienx-text-dim">0.00%</p>
+        </div>
+        <div className="stat-card">
+          <p className="text-sm text-sentienx-text-muted mb-1">Win Rate</p>
+          <p className="text-2xl font-bold">—</p>
+          <p className="text-sm mt-1 text-sentienx-text-dim">Start trading to see stats</p>
+        </div>
       </div>
 
-      {/* Live Ticker */}
-      {lastTick && (
-        <div className="stat-card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-sentienx-text-muted">Live Tick</p>
-              <p className="text-lg font-semibold tabular-nums">
-                {lastTick.tick?.symbol}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold tabular-nums">
-                {lastTick.tick?.quote?.toFixed(lastTick.tick?.pip_size || 2)}
-              </p>
-              <p className="text-xs text-sentienx-text-dim">
-                Bid: {lastTick.tick?.bid?.toFixed(2)} | Ask:{" "}
-                {lastTick.tick?.ask?.toFixed(2)}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <a
           href="/dashboard/trade"
@@ -126,9 +88,7 @@ export default function DashboardPage() {
             </div>
             <div>
               <p className="font-medium">Start Trading</p>
-              <p className="text-xs text-sentienx-text-muted">
-                Execute a new trade
-              </p>
+              <p className="text-xs text-sentienx-text-muted">Execute a new trade</p>
             </div>
           </div>
         </a>
@@ -145,9 +105,7 @@ export default function DashboardPage() {
             </div>
             <div>
               <p className="font-medium">Run a Bot</p>
-              <p className="text-xs text-sentienx-text-muted">
-                Automated strategies
-              </p>
+              <p className="text-xs text-sentienx-text-muted">Automated strategies</p>
             </div>
           </div>
         </a>
@@ -164,23 +122,10 @@ export default function DashboardPage() {
             </div>
             <div>
               <p className="font-medium">Trading Academy</p>
-              <p className="text-xs text-sentienx-text-muted">
-                Learn & improve
-              </p>
+              <p className="text-xs text-sentienx-text-muted">Learn &amp; improve</p>
             </div>
           </div>
         </a>
-      </div>
-
-      {/* Recent Activity Placeholder */}
-      <div className="stat-card">
-        <h3 className="font-semibold mb-4">Recent Activity</h3>
-        <div className="text-center py-12 text-sentienx-text-dim">
-          <p className="text-sm">No recent activity</p>
-          <p className="text-xs mt-1">
-            Your trades and bot runs will appear here
-          </p>
-        </div>
       </div>
     </div>
   );
