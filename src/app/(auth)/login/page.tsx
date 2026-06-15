@@ -48,9 +48,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center space-y-2">
           <div className="flex items-center justify-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-sentienx-brand flex items-center justify-center">
-              <span className="text-white font-bold text-lg">S</span>
-            </div>
+            <img src="/icon-192.png" alt="Sentienx" className="w-10 h-10 rounded-xl" />
             <span className="text-2xl font-bold text-sentienx-text">
               Sentienx
             </span>

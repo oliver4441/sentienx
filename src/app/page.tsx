@@ -23,9 +23,7 @@ export default function LandingPage() {
       <nav className="border-b border-white/[0.06] bg-[#070709]/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[#6366f1] flex items-center justify-center">
-              <span className="text-white font-bold text-sm">S</span>
-            </div>
+            <img src="/icon-192.png" alt="Sentienx" className="w-8 h-8 rounded-lg" />
             <span className="text-xl font-bold text-[#f4f4f5]">Sentienx</span>
           </div>
           <div className="flex items-center gap-6">
