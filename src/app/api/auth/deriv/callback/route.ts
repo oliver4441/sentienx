@@ -34,10 +34,28 @@ export async function GET(request: NextRequest) {
   const error = searchParams.get("error");
   const errorDescription = searchParams.get("error_description");
 
+  // Check for Deriv's token-based response (acctN/tokenN/curN format)
+  // This happens when the OAuth app uses token/implicit grant instead of authorization code
+  const allParams: Record<string, string> = {};
+  searchParams.forEach((value, key) => { allParams[key] = value; });
+
+  // Extract all accounts from the token-based response
+  const accounts: Array<{ accountId: string; token: string; currency: string }> = [];
+  let i = 1;
+  while (allParams[`acct${i}`] && allParams[`token${i}`]) {
+    accounts.push({
+      accountId: allParams[`acct${i}`],
+      token: allParams[`token${i}`],
+      currency: allParams[`cur${i}`] || "USD",
+    });
+    i++;
+  }
+  const hasTokenResponse = accounts.length > 0;
+
   // Log everything Deriv sends us
   console.log("[Deriv Callback] Full URL:", request.url);
-  console.log("[Deriv Callback] Params:", Object.fromEntries(searchParams.entries()));
-  console.log("[Deriv Callback] Has code:", !!code, "| Has error:", !!error, "| Has state:", !!state);
+  console.log("[Deriv Callback] Has code:", !!code, "| Has token response:", hasTokenResponse, "| Accounts:", accounts.length);
+  console.log("[Deriv Callback] Has error:", !!error);
 
   if (error) {
     console.log("[Deriv Callback] Error from Deriv:", error, errorDescription);
@@ -46,32 +64,67 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // Handle token-based response (Deriv sends tokens directly)
+  if (hasTokenResponse && !code) {
+    console.log("[Deriv Callback] Token-based response detected, accounts:", accounts.length);
+
+    // Verify state to prevent CSRF
+    const storedState = request.cookies.get("deriv_oauth_state")?.value;
+    if (!storedState || storedState !== state) {
+      console.log("[Deriv Callback] State mismatch");
+      return NextResponse.redirect(new URL("/login?error=invalid_state", request.url));
+    }
+
+    const isProduction = process.env.NODE_ENV === "production";
+    const cookieOpts = {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? ("none" as const) : ("lax" as const),
+      path: "/",
+    };
+
+    const redirectUrl = new URL("/dashboard", request.url);
+    const redirectResponse = NextResponse.redirect(redirectUrl);
+
+    // Set the first account's access token
+    redirectResponse.cookies.set("deriv_access_token", accounts[0].token, {
+      ...cookieOpts,
+      maxAge: 3600,
+    });
+
+    // Store all accounts info as a JSON cookie
+    redirectResponse.cookies.set("deriv_accounts", JSON.stringify(accounts), {
+      ...cookieOpts,
+      maxAge: 3600,
+    });
+
+    // Set session marker for middleware
+    redirectResponse.cookies.set("deriv_session", "1", {
+      httpOnly: false,
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
+      maxAge: 3600,
+      path: "/",
+    });
+
+    // Clear PKCE cookies
+    redirectResponse.cookies.set("deriv_code_verifier", "", { maxAge: 0, path: "/" });
+    redirectResponse.cookies.set("deriv_oauth_state", "", { maxAge: 0, path: "/" });
+
+    return redirectResponse;
+  }
+
   if (!code) {
-    console.log("[Deriv Callback] No code received. Possible causes: already authorized, redirect_uri mismatch, or user cancelled");
-    // Return debug info as JSON so we can see what happened
+    console.log("[Deriv Callback] No code and no token response");
     return NextResponse.json({
       error: "missing_code",
-      hint: "Deriv redirected back without an authorization code",
-      possibleCauses: [
-        "User already authorized this app — Deriv skips the code on re-authorization",
-        "redirect_uri mismatch between app settings and OAuth request",
-        "User cancelled the authorization",
-        "The OAuth app is not properly configured on Deriv",
-      ],
+      hint: "Deriv redirected back without an authorization code or token",
       debug: {
         fullUrl: request.url,
-        params: Object.fromEntries(searchParams.entries()),
+        params: allParams,
         hasState: !!state,
         hasError: !!error,
-        cookies: {
-          oauthState: request.cookies.get("deriv_oauth_state")?.value || null,
-          codeVerifier: request.cookies.get("deriv_code_verifier")?.value ? "present" : null,
-        },
-        config: {
-          clientId: DERIV_CONFIG.appId,
-          redirectUri: DERIV_CONFIG.redirectUri,
-          oauthUrl: DERIV_CONFIG.oauthUrl,
-        },
+        accountsFound: accounts.length,
       },
     }, { status: 400 });
   }
