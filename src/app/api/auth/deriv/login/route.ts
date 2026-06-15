@@ -82,14 +82,17 @@ export async function GET(request: NextRequest) {
 
 function buildAuthUrl(codeChallenge: string, state: string, isRegistration: boolean): string {
   const params = new URLSearchParams({
-    app_id: String(DERIV_CONFIG.appId),
-    redirect_uri: DERIV_CONFIG.redirectUri,
     response_type: "code",
-    scope: "read trade payments",
+    client_id: String(DERIV_CONFIG.appId),
+    redirect_uri: DERIV_CONFIG.redirectUri,
+    scope: "trade account_manage",
     code_challenge: codeChallenge,
     code_challenge_method: "S256",
     state: state,
   });
+
+  // Legacy app_id parameter (required for Deriv API app routing)
+  params.append("app_id", String(DERIV_CONFIG.appId));
 
   // Show sign-up form instead of login for new users
   if (isRegistration) {
@@ -98,7 +101,6 @@ function buildAuthUrl(codeChallenge: string, state: string, isRegistration: bool
 
   // Partner referral tracking — earns commission on referred users
   // Use affiliate_token for OAuth sign-in tracking
-  // See: https://legacy-docs.deriv.com/docs/affiliates
   if (DERIV_CONFIG.affiliateToken) {
     params.append("affiliate_token", DERIV_CONFIG.affiliateToken);
     params.append("utm_campaign", "dynamicworks");

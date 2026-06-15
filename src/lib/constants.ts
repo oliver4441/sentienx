@@ -35,8 +35,8 @@ export const DERIV_CONFIG = {
     "https://sentienx.com/api/auth/deriv/callback",
 
   // OAuth endpoints
-  oauthUrl: "https://oauth.deriv.com/oauth2/auth",
-  tokenUrl: "https://oauth.deriv.com/oauth2/token",
+  oauthUrl: "https://auth.deriv.com/oauth2/auth",
+  tokenUrl: "https://auth.deriv.com/oauth2/token",
 
   // Public WS — no auth needed, works for ticks
   wsPublic: "wss://ws.derivws.com/websockets/v3",
