@@ -6,7 +6,6 @@ import { DERIV_CONFIG } from "@/lib/constants";
  * Remove this after fixing the OAuth flow.
  */
 export async function GET() {
-  // Build a sample auth URL (with dummy PKCE params)
   const params = new URLSearchParams({
     response_type: "code",
     client_id: String(DERIV_CONFIG.appId),
@@ -16,7 +15,10 @@ export async function GET() {
     code_challenge_method: "S256",
     state: "DEBUG_STATE",
   });
-  params.append("app_id", String(DERIV_CONFIG.appId));
+
+  if (DERIV_CONFIG.legacyAppId) {
+    params.append("app_id", String(DERIV_CONFIG.legacyAppId));
+  }
 
   if (DERIV_CONFIG.affiliateToken) {
     params.append("affiliate_token", DERIV_CONFIG.affiliateToken);
@@ -27,7 +29,8 @@ export async function GET() {
   return NextResponse.json({
     authUrl,
     config: {
-      appId: DERIV_CONFIG.appId,
+      clientId: DERIV_CONFIG.appId,
+      legacyAppId: DERIV_CONFIG.legacyAppId,
       redirectUri: DERIV_CONFIG.redirectUri,
       oauthUrl: DERIV_CONFIG.oauthUrl,
       tokenUrl: DERIV_CONFIG.tokenUrl,
