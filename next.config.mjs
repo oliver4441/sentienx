@@ -4,9 +4,7 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  experimental: {
-    turbo: {},
-  },
+  output: "standalone",
 };
 
 export default nextConfig;
