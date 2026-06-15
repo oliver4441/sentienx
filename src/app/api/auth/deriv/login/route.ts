@@ -57,6 +57,11 @@ export async function GET(request: NextRequest) {
   // Build the authorization URL per Deriv docs
   const authUrl = buildAuthUrl(codeChallenge, state, isRegistration);
 
+  // Server-side log for debugging
+  console.log("[Deriv OAuth] Authorization URL:", authUrl);
+  console.log("[Deriv OAuth] App ID:", DERIV_CONFIG.appId);
+  console.log("[Deriv OAuth] Redirect URI:", DERIV_CONFIG.redirectUri);
+
   // Return the URL to the client (client-side redirect)
   const response = NextResponse.json({ authorizationUrl: authUrl });
 
