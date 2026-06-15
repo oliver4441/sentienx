@@ -97,9 +97,10 @@ function buildAuthUrl(codeChallenge: string, state: string, isRegistration: bool
   }
 
   // Partner referral tracking — earns commission on referred users
-  // The `t` parameter is the `sidc` value from your Deriv Partners referral link
+  // Use affiliate_token for OAuth sign-in tracking
+  // See: https://legacy-docs.deriv.com/docs/affiliates
   if (DERIV_CONFIG.affiliateToken) {
-    params.append("t", DERIV_CONFIG.affiliateToken);
+    params.append("affiliate_token", DERIV_CONFIG.affiliateToken);
     params.append("utm_campaign", "dynamicworks");
     params.append("utm_medium", "affiliate");
     params.append("utm_source", "CU140274");

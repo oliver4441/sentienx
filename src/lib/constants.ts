@@ -23,11 +23,10 @@ export const DERIV_CONFIG = {
   // Your Deriv app ID (from https://developers.deriv.com)
   appId: process.env.DERIV_APP_ID || "113241",
 
-  // Partner referral token (the `sidc` value from your Deriv Partners referral link)
-  // Revenue Share: 2548C893-FA83-40F4-B2DE-23CA0323E77A
-  // Turnover:     9A0642DD-82D8-4247-B788-BB1E6E1F9392
-  // Master:       8D84947E-BB36-47A7-A09E-2FD6E49F682A
-  // MyAffiliate:  nXuHksD9Gfb1hit6RV3zsGNd7ZgqdRLk
+  // Partner referral token — the value from your Deriv Partners referral link
+  // For track.deriv.com links: use the full path segment (e.g., nXuHksD9Gfb1hit6RV3zsGNd7ZgqdRLk)
+  // For /rx?sidc= links: use the sidc UUID value
+  // This is passed as `affiliate_token` in OAuth URLs for sign-up/sign-in tracking
   affiliateToken: process.env.DERIV_AFFILIATE_TOKEN || "",
 
   // OAuth redirect URI — must match exactly what's registered in your Deriv app
