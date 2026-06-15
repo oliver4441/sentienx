@@ -26,13 +26,10 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Generate PKCE code verifier (43-128 chars)
-  const array = new Uint8Array(32);
-  crypto.getRandomValues(array);
-  const codeVerifier = btoa(String.fromCharCode(...array))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
+  // Generate PKCE code verifier (43-128 chars, using unreserved URI characters)
+  const array = crypto.getRandomValues(new Uint8Array(32));
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+  const codeVerifier = Array.from(array, (b) => chars[b % chars.length]).join('');
 
   // Derive code challenge: BASE64URL(SHA256(code_verifier))
   const encoder = new TextEncoder();
