@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 
 // Routes that require authentication
 const protectedRoutes = [
+  "/dashboard",
   "/trade",
   "/markets",
   "/positions",
@@ -45,6 +46,7 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     "/",
+    "/dashboard/:path*",
     "/trade/:path*",
     "/markets/:path*",
     "/positions/:path*",
