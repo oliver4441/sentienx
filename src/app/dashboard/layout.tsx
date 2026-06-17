@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 
+/* ─── Navigation Config ───────────────────────────────────────────── */
+
 const TOP_NAV = [
   { href: "/dashboard", label: "Overview", icon: "grid" },
   { href: "/dashboard/trade", label: "Trade", icon: "trending-up" },
@@ -26,6 +28,17 @@ const ALL_NAV = [
   { href: "/dashboard/earnings", label: "Earnings", icon: "dollar-sign" },
   { href: "/dashboard/affiliate", label: "Affiliate Hub", icon: "users", badge: "EARN" },
 ];
+
+// Bottom tab bar items (portrait mobile)
+const BOTTOM_TABS = [
+  { href: "/dashboard", label: "Home", icon: "grid" },
+  { href: "/dashboard/trade", label: "Trade", icon: "trending-up" },
+  { href: "/dashboard/bots", label: "Bots", icon: "bot" },
+  { href: "/dashboard/markets", label: "Markets", icon: "bar-chart" },
+  { href: "/dashboard/more", label: "More", icon: "menu" },
+];
+
+/* ─── Icon Component ───────────────────────────────────────────────── */
 
 function Icon({ name, className }: { name: string; className?: string }) {
   const icons: Record<string, ReactNode> = {
@@ -53,6 +66,7 @@ function Icon({ name, className }: { name: string; className?: string }) {
 }
 
 /* ─── Notifications Panel ──────────────────────────────────────────── */
+
 function NotificationsPanel({ onClose }: { onClose: () => void }) {
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -70,7 +84,7 @@ function NotificationsPanel({ onClose }: { onClose: () => void }) {
   ];
 
   return (
-    <div ref={panelRef} className="absolute right-0 top-full mt-2 w-80 rounded-2xl border border-white/[0.08] bg-[#0f0f14] shadow-2xl shadow-black/40 z-50 overflow-hidden">
+    <div ref={panelRef} className="absolute right-0 top-full mt-2 w-72 sm:w-80 rounded-2xl border border-white/[0.08] bg-[#0f0f14] shadow-2xl shadow-black/40 z-50 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
         <h3 className="text-sm font-semibold text-[#f4f4f5]">Notifications</h3>
         <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#6366f1]/10 text-[#818cf8]">
@@ -101,6 +115,7 @@ function NotificationsPanel({ onClose }: { onClose: () => void }) {
 }
 
 /* ─── User Dropdown ─────────────────────────────────────────────────── */
+
 function UserDropdown({ onClose }: { onClose: () => void }) {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { accountInfo, isDemo, logout } = useAuth();
@@ -126,7 +141,6 @@ function UserDropdown({ onClose }: { onClose: () => void }) {
 
   return (
     <div ref={dropdownRef} className="absolute right-0 top-full mt-2 w-72 rounded-2xl border border-white/[0.08] bg-[#0f0f14] shadow-2xl shadow-black/40 z-50 overflow-hidden">
-      {/* User info */}
       <div className="px-4 py-4 border-b border-white/[0.06]">
         <div className="flex items-center gap-3">
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 ${
@@ -146,8 +160,6 @@ function UserDropdown({ onClose }: { onClose: () => void }) {
           </span>
         </div>
       </div>
-
-      {/* Menu items */}
       <div className="p-1.5">
         {[
           { icon: "grid", label: "Dashboard", href: "/dashboard" },
@@ -165,8 +177,6 @@ function UserDropdown({ onClose }: { onClose: () => void }) {
           </Link>
         ))}
       </div>
-
-      {/* Logout */}
       <div className="p-1.5 border-t border-white/[0.06]">
         <button
           onClick={handleLogout}
@@ -181,6 +191,7 @@ function UserDropdown({ onClose }: { onClose: () => void }) {
 }
 
 /* ─── Search Modal ──────────────────────────────────────────────────── */
+
 function SearchModal({ onClose }: { onClose: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
@@ -202,10 +213,9 @@ function SearchModal({ onClose }: { onClose: () => void }) {
   ];
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-start justify-center pt-[15vh]">
+    <div className="fixed inset-0 z-[60] flex items-start justify-center pt-[10vh] sm:pt-[15vh]">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-lg mx-4 rounded-2xl border border-white/[0.08] bg-[#0f0f14] shadow-2xl shadow-black/50 overflow-hidden">
-        {/* Search input */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.06]">
           <Icon name="search" className="w-5 h-5 text-[#71717a] shrink-0" />
           <input
@@ -219,8 +229,6 @@ function SearchModal({ onClose }: { onClose: () => void }) {
             ESC
           </kbd>
         </div>
-
-        {/* Quick links */}
         <div className="p-3">
           <p className="px-2 py-1.5 text-[10px] font-semibold text-[#71717a] uppercase tracking-wider">Quick Links</p>
           <div className="space-y-0.5">
@@ -245,19 +253,129 @@ function SearchModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+/* ─── Bottom Tab Bar (Portrait Mobile) ──────────────────────────────── */
+
+function BottomTabBar() {
+  const pathname = usePathname();
+
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#0a0a0f]/95 backdrop-blur-xl border-t border-white/[0.06] safe-area-bottom md:hidden">
+      <div className="flex items-center justify-around h-16 px-2">
+        {BOTTOM_TABS.map((tab) => {
+          const isActive = tab.href === "/dashboard"
+            ? pathname === "/dashboard"
+            : pathname.startsWith(tab.href) && tab.href !== "/dashboard/more";
+
+          // "More" is active if on any page not covered by other tabs
+          const isMoreActive = tab.href === "/dashboard/more" && !BOTTOM_TABS.some(
+            t => t.href !== "/dashboard/more" && (t.href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(t.href))
+          );
+
+          const active = tab.href === "/dashboard/more" ? isMoreActive : isActive;
+
+          return (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              className={`flex flex-col items-center justify-center gap-1 flex-1 py-1.5 rounded-xl transition-colors ${
+                active ? "text-[#818cf8]" : "text-[#71717a]"
+              }`}
+            >
+              <div className="relative">
+                <Icon name={tab.icon} className="w-5 h-5" />
+                {active && (
+                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#6366f1]" />
+                )}
+              </div>
+              <span className="text-[10px] font-medium">{tab.label}</span>
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+
+/* ─── More Menu (Mobile) ────────────────────────────────────────────── */
+
+function MoreMenu({ onClose }: { onClose: () => void }) {
+  const { isDemo, logout } = useAuth();
+  const router = useRouter();
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) onClose();
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [onClose]);
+
+  const handleLogout = async () => {
+    onClose();
+    await logout();
+  };
+
+  const moreItems = ALL_NAV.filter(
+    item => !BOTTOM_TABS.some(tab => tab.href === item.href)
+  );
+
+  return (
+    <div ref={menuRef} className="absolute right-0 bottom-full mb-2 w-56 rounded-2xl border border-white/[0.08] bg-[#0f0f14] shadow-2xl shadow-black/40 z-50 overflow-hidden">
+      <div className="p-1.5 max-h-[60vh] overflow-y-auto">
+        {moreItems.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            onClick={onClose}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-[#a1a1aa] hover:text-[#f4f4f5] hover:bg-white/[0.04] transition-all"
+          >
+            <Icon name={item.icon} className="w-4 h-4 text-[#71717a]" />
+            <span className="flex-1">{item.label}</span>
+            {item.badge && (
+              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${
+                item.badge === "HOT" ? "bg-red-500/15 text-red-400" : "bg-emerald-500/15 text-emerald-400"
+              }`}>
+                {item.badge}
+              </span>
+            )}
+          </Link>
+        ))}
+      </div>
+      <div className="p-1.5 border-t border-white/[0.06]">
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-[#ff1744] hover:bg-[#ff1744]/[0.06] transition-all"
+        >
+          <Icon name="logout" className="w-4 h-4" />
+          Sign Out
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Main Dashboard Layout ─────────────────────────────────────────── */
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { isAuthenticated, isLoading, logout, accountInfo, isDemo } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isLandscape, setIsLandscape] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
 
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
+    const check = () => {
+      const mobile = window.innerWidth < 768;
+      const landscape = window.innerWidth > window.innerHeight && window.innerHeight < 500;
+      setIsMobile(mobile);
+      setIsLandscape(landscape);
+    };
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
@@ -299,6 +417,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const currency = accountInfo?.authorize?.currency || "USD";
   const fullname = accountInfo?.authorize?.fullname || (accountInfo as unknown as { fullname?: string })?.fullname || "Trader";
 
+  // Check if we're on the "more" page (mobile)
+  const isMorePage = pathname === "/dashboard/more" && isMobile;
+
   return (
     <div className="min-h-screen flex bg-[#070709]">
       {/* Search Modal */}
@@ -309,108 +430,120 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 transition-opacity" onClick={() => setSidebarOpen(false)} />
       )}
 
-      {/* Sidebar */}
-      <aside
-        className={`${
-          isMobile
-            ? `fixed inset-y-0 left-0 z-50 w-[280px] transform transition-transform duration-300 ease-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`
-            : "fixed inset-y-0 left-0 z-40 w-[250px]"
-        } bg-[#0a0a0f] border-r border-white/[0.06] flex flex-col`}
-      >
-        {/* Logo */}
-        <div className="h-16 flex items-center px-5 border-b border-white/[0.06] shrink-0">
-          <img src="/logo.jpg" alt="Sentienx" className="w-9 h-9 rounded-xl shrink-0" />
-          <div className="ml-3">
-            <span className="text-base font-bold text-[#f4f4f5] tracking-tight">Sentienx</span>
-            {isDemo && <span className="block text-[10px] text-purple-400 font-medium">DEMO MODE</span>}
-          </div>
-        </div>
-
-        {/* Nav */}
-        <nav className="flex-1 py-4 px-3 space-y-0.5 overflow-y-auto">
-          {ALL_NAV.map((item) => {
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-150 ${
-                  isActive
-                    ? "bg-[#6366f1]/10 text-[#818cf8]"
-                    : "text-[#a1a1aa] hover:bg-white/[0.04] hover:text-[#f4f4f5]"
-                }`}
-                title={item.label}
-              >
-                <Icon name={item.icon} className={`w-[18px] h-[18px] shrink-0 ${isActive ? "text-[#6366f1]" : "text-[#71717a]"}`} />
-                <span className="whitespace-nowrap">{item.label}</span>
-                {item.badge && (
-                  <span className={`ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-md ${
-                    item.badge === "HOT" ? "bg-red-500/15 text-red-400" : "bg-emerald-500/15 text-emerald-400"
-                  }`}>
-                    {item.badge}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* User section */}
-        <div className="border-t border-white/[0.06] p-3 shrink-0">
-          <div className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/[0.03] transition-colors">
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-sm font-bold ${
-              isDemo ? "bg-purple-500/15 text-purple-400" : "bg-[#6366f1]/15 text-[#818cf8]"
-            }`}>
-              {fullname[0]?.toUpperCase() || "U"}
+      {/* Sidebar — hidden on portrait mobile, shown on landscape or md+ */}
+      {(!isMobile || isLandscape) && (
+        <aside
+          className={`${
+            isMobile && isLandscape
+              ? "fixed inset-y-0 left-0 z-50 w-[220px]"
+              : isMobile
+                ? `fixed inset-y-0 left-0 z-50 w-[280px] transform transition-transform duration-300 ease-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`
+                : "fixed inset-y-0 left-0 z-40 w-[250px]"
+          } bg-[#0a0a0f] border-r border-white/[0.06] flex flex-col`}
+        >
+          {/* Logo */}
+          <div className="h-14 sm:h-16 flex items-center px-4 sm:px-5 border-b border-white/[0.06] shrink-0">
+            <img src="/logo.jpg" alt="Sentienx" className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl shrink-0" />
+            <div className="ml-2.5 sm:ml-3">
+              <span className="text-sm sm:text-base font-bold text-[#f4f4f5] tracking-tight">Sentienx</span>
+              {isDemo && <span className="block text-[10px] text-purple-400 font-medium">DEMO MODE</span>}
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-[#f4f4f5] truncate">{fullname}</p>
-              <p className="text-xs text-[#71717a] truncate tabular-nums">
-                {currency} {Number(balance).toFixed(2)}
-              </p>
-            </div>
-            <button
-              onClick={logout}
-              className="p-2 rounded-lg text-[#71717a] hover:text-[#f4f4f5] hover:bg-white/[0.05] transition-colors"
-              title="Logout"
-            >
-              <Icon name="logout" className="w-4 h-4" />
-            </button>
           </div>
-        </div>
-      </aside>
 
-      {/* Main content */}
-      <div className={`flex-1 flex flex-col ${!isMobile ? "ml-[250px]" : ""}`}>
-        {/* ─── TOP NAVBAR ─────────────────────────────────────────── */}
-        <header className="h-16 border-b border-white/[0.06] bg-[#070709]/80 backdrop-blur-xl sticky top-0 z-30">
-          <div className="flex items-center justify-between h-full px-4 md:px-6">
-            {/* Left: hamburger + breadcrumb */}
-            <div className="flex items-center gap-3">
+          {/* Nav */}
+          <nav className="flex-1 py-3 sm:py-4 px-2 sm:px-3 space-y-0.5 overflow-y-auto">
+            {ALL_NAV.map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-150 ${
+                    isActive
+                      ? "bg-[#6366f1]/10 text-[#818cf8]"
+                      : "text-[#a1a1aa] hover:bg-white/[0.04] hover:text-[#f4f4f5]"
+                  }`}
+                  title={item.label}
+                >
+                  <Icon name={item.icon} className={`w-[18px] h-[18px] shrink-0 ${isActive ? "text-[#6366f1]" : "text-[#71717a]"}`} />
+                  <span className="whitespace-nowrap">{item.label}</span>
+                  {item.badge && (
+                    <span className={`ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-md ${
+                      item.badge === "HOT" ? "bg-red-500/15 text-red-400" : "bg-emerald-500/15 text-emerald-400"
+                    }`}>
+                      {item.badge}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* User section */}
+          <div className="border-t border-white/[0.06] p-2 sm:p-3 shrink-0">
+            <div className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/[0.03] transition-colors">
+              <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shrink-0 text-sm font-bold ${
+                isDemo ? "bg-purple-500/15 text-purple-400" : "bg-[#6366f1]/15 text-[#818cf8]"
+              }`}>
+                {fullname[0]?.toUpperCase() || "U"}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-[#f4f4f5] truncate">{fullname}</p>
+                <p className="text-xs text-[#71717a] truncate tabular-nums">
+                  {currency} {Number(balance).toFixed(2)}
+                </p>
+              </div>
               <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="p-2 rounded-xl hover:bg-white/[0.05] transition-colors text-[#a1a1aa] lg:hidden"
+                onClick={logout}
+                className="p-2 rounded-lg text-[#71717a] hover:text-[#f4f4f5] hover:bg-white/[0.05] transition-colors"
+                title="Logout"
               >
-                <Icon name="menu" className="w-5 h-5" />
+                <Icon name="logout" className="w-4 h-4" />
               </button>
+            </div>
+          </div>
+        </aside>
+      )}
 
-              {/* Breadcrumb */}
-              <div className="hidden sm:flex items-center gap-2 text-sm">
-                <span className="text-[#71717a]">Dashboard</span>
+      {/* Main content area */}
+      <div className={`flex-1 flex flex-col ${(!isMobile || isLandscape) ? "md:ml-[250px]" : ""}`}>
+        {/* ─── TOP NAVBAR ─────────────────────────────────────────── */}
+        <header className={`h-14 sm:h-16 border-b border-white/[0.06] bg-[#070709]/80 backdrop-blur-xl sticky top-0 z-30 ${isMobile && !isLandscape ? "safe-area-top" : ""}`}>
+          <div className="flex items-center justify-between h-full px-3 sm:px-4 md:px-6">
+            {/* Left: hamburger + breadcrumb */}
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              {/* Hamburger — only on portrait mobile */}
+              {isMobile && !isLandscape && (
+                <button
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                  className="p-2 -ml-1 rounded-xl hover:bg-white/[0.05] transition-colors text-[#a1a1aa] shrink-0"
+                >
+                  <Icon name="menu" className="w-5 h-5" />
+                </button>
+              )}
+
+              {/* Breadcrumb — hidden on small screens */}
+              <div className="hidden sm:flex items-center gap-2 text-sm min-w-0">
+                <span className="text-[#71717a] shrink-0">Dashboard</span>
                 {pathname !== "/dashboard" && (
                   <>
-                    <svg className="w-3 h-3 text-[#71717a]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg className="w-3 h-3 text-[#71717a] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <polyline points="9 18 15 12 9 6" />
                     </svg>
-                    <span className="text-[#f4f4f5] font-medium capitalize">
+                    <span className="text-[#f4f4f5] font-medium capitalize truncate">
                       {pathname.split("/").pop()?.replace(/-/g, " ") || "Overview"}
                     </span>
                   </>
                 )}
               </div>
+
+              {/* Mobile page title */}
+              <span className="sm:hidden text-sm font-medium text-[#f4f4f5] capitalize truncate">
+                {pathname === "/dashboard" ? "Overview" : pathname.split("/").pop()?.replace(/-/g, " ") || "Overview"}
+              </span>
             </div>
 
-            {/* Center: Search trigger */}
+            {/* Center: Search trigger — desktop only */}
             <div className="flex-1 flex justify-center max-w-md mx-4 hidden md:flex">
               <button
                 onClick={() => setShowSearch(true)}
@@ -427,11 +560,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
 
             {/* Right: actions */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5 sm:gap-1">
               {/* Mobile search */}
               <button
                 onClick={() => setShowSearch(true)}
-                className="md:hidden p-2.5 rounded-xl hover:bg-white/[0.05] transition-colors text-[#a1a1aa]"
+                className="md:hidden p-2 sm:p-2.5 rounded-xl hover:bg-white/[0.05] transition-colors text-[#a1a1aa]"
               >
                 <Icon name="search" className="w-5 h-5" />
               </button>
@@ -440,7 +573,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <div className="relative">
                 <button
                   onClick={() => { setShowNotifications(!showNotifications); setShowUserDropdown(false); }}
-                  className="p-2.5 rounded-xl hover:bg-white/[0.05] transition-colors text-[#a1a1aa] relative"
+                  className="p-2 sm:p-2.5 rounded-xl hover:bg-white/[0.05] transition-colors text-[#a1a1aa] relative"
                 >
                   <Icon name="bell" className="w-5 h-5" />
                   <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#6366f1]" />
@@ -448,13 +581,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 {showNotifications && <NotificationsPanel onClose={() => setShowNotifications(false)} />}
               </div>
 
-              {/* Divider */}
+              {/* Divider — hidden on mobile */}
               <div className="w-px h-6 bg-white/[0.06] mx-1 hidden sm:block" />
 
-              {/* Balance pill */}
-              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.06] mr-1">
+              {/* Balance pill — always visible */}
+              <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.06] mr-0.5 sm:mr-1">
                 <div className={`w-1.5 h-1.5 rounded-full ${isDemo ? "bg-purple-400" : "bg-[#00e676]"} pulse-dot`} />
-                <span className="text-xs font-medium tabular-nums text-[#a1a1aa]">
+                <span className="text-[11px] sm:text-xs font-medium tabular-nums text-[#a1a1aa]">
                   {currency} {Number(balance).toFixed(2)}
                 </span>
               </div>
@@ -463,9 +596,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <div className="relative">
                 <button
                   onClick={() => { setShowUserDropdown(!showUserDropdown); setShowNotifications(false); }}
-                  className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-white/[0.05] transition-colors"
+                  className="flex items-center gap-1.5 sm:gap-2 p-1 sm:p-1.5 rounded-xl hover:bg-white/[0.05] transition-colors"
                 >
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${
+                  <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-xs font-bold ${
                     isDemo ? "bg-purple-500/15 text-purple-400" : "bg-[#6366f1]/15 text-[#818cf8]"
                   }`}>
                     {fullname[0]?.toUpperCase() || "U"}
@@ -481,55 +614,37 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Demo banner */}
         {isDemo && (
-          <div className="bg-gradient-to-r from-purple-600/10 via-purple-600/5 to-blue-600/10 border-b border-purple-500/10 px-4 py-2.5 flex items-center justify-center gap-3">
-            <div className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
-            <span className="text-xs font-medium text-purple-300/90">
+          <div className="bg-gradient-to-r from-purple-600/10 via-purple-600/5 to-blue-600/10 border-b border-purple-500/10 px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-center gap-2 sm:gap-3">
+            <div className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse shrink-0" />
+            <span className="text-[11px] sm:text-xs font-medium text-purple-300/90 text-center">
               Demo Mode — $10,000 virtual balance. No real money at risk.
             </span>
             <a
               href="/login"
-              className="text-xs font-semibold text-purple-400 hover:text-purple-300 underline underline-offset-2 decoration-purple-400/30 hover:decoration-purple-400/60 transition-colors"
+              className="text-[11px] sm:text-xs font-semibold text-purple-400 hover:text-purple-300 underline underline-offset-2 decoration-purple-400/30 hover:decoration-purple-400/60 transition-colors shrink-0"
             >
-              Connect real account
+              Connect account
             </a>
           </div>
         )}
 
         {/* Page content */}
-        <main className="flex-1 p-4 md:p-6 overflow-y-auto pb-24 md:pb-6">
-          {children}
+        <main className={`flex-1 overflow-y-auto ${isMobile && !isLandscape ? "pb-20" : "pb-6"}`}>
+          <div className="p-3 sm:p-4 md:p-6">
+            {children}
+          </div>
         </main>
-
-        {/* Mobile bottom nav */}
-        {isMobile && (
-          <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#0a0a0f]/95 backdrop-blur-xl border-t border-white/[0.06] safe-area-bottom">
-            <div className="flex items-center justify-around h-16">
-              {TOP_NAV.map((item) => {
-                const isActive = pathname === item.href;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
-                      isActive ? "text-[#6366f1]" : "text-[#71717a]"
-                    }`}
-                  >
-                    <div className="relative">
-                      <Icon name={item.icon} className="w-5 h-5" />
-                      {item.badge && (
-                        <span className="absolute -top-1 -right-2.5 text-[7px] font-bold px-1 py-0.5 rounded-md bg-red-500 text-white leading-none">
-                          {item.badge}
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-[10px] mt-1 font-medium">{item.label}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          </nav>
-        )}
       </div>
+
+      {/* Bottom Tab Bar — portrait mobile only */}
+      {isMobile && !isLandscape && <BottomTabBar />}
+
+      {/* More Menu for bottom tab */}
+      {showMoreMenu && (
+        <div className="fixed bottom-16 right-2 z-50 md:hidden">
+          <MoreMenu onClose={() => setShowMoreMenu(false)} />
+        </div>
+      )}
     </div>
   );
 }
