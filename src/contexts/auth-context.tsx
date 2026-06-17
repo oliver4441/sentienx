@@ -16,11 +16,13 @@ interface AuthState {
   isLoading: boolean;
   accessToken: string | null;
   accountInfo: DerivAccountInfo | null;
+  isDemo: boolean;
   error: string | null;
 }
 
 interface AuthContextType extends AuthState {
   login: () => Promise<void>;
+  demoLogin: () => Promise<void>;
   logout: () => void;
   setAccessToken: (token: string) => void;
   refreshSession: () => Promise<boolean>;
@@ -36,6 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading: true,
     accessToken: null,
     accountInfo: null,
+    isDemo: false,
     error: null,
   });
 
@@ -69,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             isLoading: false,
             accessToken: data.accessToken,
             accountInfo: data.accountInfo || null,
+            isDemo: data.demo === true,
             error: null,
           });
           return;
@@ -81,6 +85,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const refreshSession = useCallback(async (): Promise<boolean> => {
+    // Demo sessions don't need refresh
+    if (state.isDemo) return true;
+
     try {
       const refreshResponse = await fetch("/api/auth/deriv/refresh", {
         method: "POST",
@@ -88,7 +95,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (refreshResponse.ok) {
-        // Re-fetch session to get updated tokens + account info
         const sessionResponse = await fetch("/api/auth/deriv/session", {
           credentials: "include",
         });
@@ -100,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               isLoading: false,
               accessToken: data.accessToken,
               accountInfo: data.accountInfo || null,
+              isDemo: false,
               error: null,
             });
             return true;
@@ -115,10 +122,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading: false,
       accessToken: null,
       accountInfo: null,
+      isDemo: false,
       error: null,
     });
     return false;
-  }, []);
+  }, [state.isDemo]);
 
   const login = useCallback(async () => {
     try {
@@ -126,7 +134,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = await response.json();
 
       if (data.authorizationUrl) {
-        // Full page redirect to Deriv OAuth
         window.location.href = data.authorizationUrl;
       } else {
         setState((prev) => ({
@@ -142,6 +149,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const demoLogin = useCallback(async () => {
+    try {
+      const response = await fetch("/api/auth/demo", { credentials: "include" });
+      if (response.ok) {
+        const data = await response.json();
+        setState({
+          isAuthenticated: true,
+          isLoading: false,
+          accessToken: data.accessToken,
+          accountInfo: data.accountInfo,
+          isDemo: true,
+          error: null,
+        });
+      }
+    } catch {
+      setState((prev) => ({
+        ...prev,
+        error: "Failed to start demo session",
+      }));
+    }
+  }, []);
+
   const logout = useCallback(async () => {
     await fetch("/api/auth/deriv/logout", { method: "POST" });
     setState({
@@ -149,6 +178,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading: false,
       accessToken: null,
       accountInfo: null,
+      isDemo: false,
       error: null,
     });
     window.location.href = "/login";
@@ -167,6 +197,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         ...state,
         login,
+        demoLogin,
         logout,
         setAccessToken,
         refreshSession,

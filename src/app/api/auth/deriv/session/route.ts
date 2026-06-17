@@ -2,14 +2,18 @@ import { NextResponse } from "next/server";
 
 import { DERIV_CONFIG } from "@/lib/constants";
 
+const DEMO_TOKEN = "demo_virtual_token";
+
 /**
  * Check if the user has a valid session.
  * Returns the access token and fetches account info from Deriv authorize API.
+ * Also handles demo sessions with virtual balance.
  */
 export async function GET(request: Request) {
   const cookieHeader = request.headers.get("cookie") || "";
   const accessToken = cookieHeader
     .match(/deriv_access_token=([^;]+)/)?.[1];
+  const isDemo = cookieHeader.includes("sentienx_demo=true");
 
   if (!accessToken) {
     return NextResponse.json({ authenticated: false });
@@ -17,7 +21,25 @@ export async function GET(request: Request) {
 
   const decodedToken = decodeURIComponent(accessToken);
 
-  // Fetch account info from Deriv authorize endpoint
+  // Demo session — return mock account info
+  if (isDemo || decodedToken === DEMO_TOKEN) {
+    return NextResponse.json({
+      authenticated: true,
+      accessToken: decodedToken,
+      demo: true,
+      accountInfo: {
+        fullname: "Demo Trader",
+        email: "demo@sentienx.app",
+        currency: "USD",
+        balance: 10000,
+        isVirtual: true,
+        accountId: "VRTC_DEMO",
+        landingCompany: "virtual",
+      },
+    });
+  }
+
+  // Real Deriv session — fetch account info from Deriv authorize endpoint
   let accountInfo = null;
   try {
     const authResponse = await fetch(

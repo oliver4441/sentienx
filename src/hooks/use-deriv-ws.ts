@@ -122,12 +122,22 @@ export function useDerivWS(options: UseDerivWSOptions = {}): UseDerivWSReturn {
 
         await ws.connect(accessToken || undefined);
 
+        // Authorize the WS session if we have an access token
+        // This is required for proposals, buy, portfolio, etc.
+        if (accessToken) {
+          try {
+            await ws.authorize(accessToken);
+          } catch (err) {
+            console.warn("Failed to authorize WS:", err);
+          }
+        }
+
         reconnectAttempt.current = 0;
         isManualDisconnect.current = false;
         setConnectionStatus("connected");
 
         // Store current tokens for reconnect
-        reconnectTokensRef.current = [accessToken || ""]; // 1 dummy // Keep // reconnect from looping on stale tokens
+        reconnectTokensRef.current = [accessToken || ""];
 
         // Subscribe to portfolio if authenticated
         if (accessToken) {

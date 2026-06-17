@@ -44,7 +44,7 @@ export default function RegisterPage() {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center space-y-2">
           <div className="flex items-center justify-center gap-2">
-            <img src="/icon-192.png" alt="Sentienx" className="w-10 h-10 rounded-xl" />
+            <img src="/logo.jpg" alt="Sentienx" className="w-10 h-10 rounded-xl" />
             <span className="text-2xl font-bold text-sentienx-text">
               Sentienx
             </span>
