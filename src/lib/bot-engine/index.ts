@@ -24,10 +24,10 @@ export interface BotConfig {
   stopLoss: number;
   martingaleMultiplier: number;
   baseStake: number;
-  // New math-first config
   minConfluenceScore?: number;
   kellyFraction?: number;
-  strategy?: 'conservative' | 'moderate' | 'aggressive';
+  strategy?: "conservative" | "moderate" | "aggressive";
+  demo?: boolean;
 }
 
 export interface BotState {
@@ -322,7 +322,8 @@ export function useBotEngine() {
   const executeTrade = useCallback(
     async (botId: string, config: BotConfig): Promise<boolean> => {
       const state = bots.get(botId) || createDefaultBotState();
-      const balance = isDemo ? 10000 : (accountInfo?.authorize?.balance || 0);
+      const effectiveDemo = config.demo || isDemo;
+      const balance = effectiveDemo ? 10000 : (accountInfo?.authorize?.balance || 0);
       const stake = state.currentStake || config.stake;
 
       if (stake > balance) {
@@ -372,6 +373,7 @@ export function useBotEngine() {
             stake: finalStake,
             duration: config.duration,
             durationUnit: config.durationUnit,
+            demo: effectiveDemo,
           }),
         });
 

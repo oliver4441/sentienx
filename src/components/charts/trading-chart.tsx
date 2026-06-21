@@ -32,11 +32,15 @@ export function TradingChart({
   const initChart = useCallback(() => {
     if (!chartContainerRef.current) return;
 
-    const chart = createChart(chartContainerRef.current, {
+    const container = chartContainerRef.current;
+    const isMobile = window.innerWidth < 640;
+    const chartHeight = isMobile ? 250 : height;
+
+    const chart = createChart(container, {
       layout: {
         background: { type: ColorType.Solid, color: "transparent" },
         textColor: "#a1a1aa",
-        fontSize: 12,
+        fontSize: isMobile ? 10 : 12,
       },
       grid: {
         vertLines: { color: "rgba(255, 255, 255, 0.04)" },
@@ -61,11 +65,11 @@ export function TradingChart({
       },
       timeScale: {
         borderColor: "rgba(255, 255, 255, 0.06)",
-        timeVisible: true,
+        timeVisible: !isMobile,
         secondsVisible: false,
       },
-      width: chartContainerRef.current.clientWidth,
-      height,
+      width: container.clientWidth,
+      height: chartHeight,
     });
 
     const candlestickSeries = chart.addSeries(CandlestickSeries, {
@@ -87,14 +91,18 @@ export function TradingChart({
 
     const handleResize = () => {
       if (chartContainerRef.current && chartRef.current) {
+        const newIsMobile = window.innerWidth < 640;
         chartRef.current.applyOptions({
           width: chartContainerRef.current.clientWidth,
+          height: newIsMobile ? 250 : height,
+          layout: { fontSize: newIsMobile ? 10 : 12 },
+          timeScale: { timeVisible: !newIsMobile },
         });
       }
     };
 
     const resizeObserver = new ResizeObserver(handleResize);
-    resizeObserver.observe(chartContainerRef.current);
+    resizeObserver.observe(container);
 
     return () => {
       resizeObserver.disconnect();
@@ -120,14 +128,6 @@ export function TradingChart({
 
   return (
     <div className={`relative ${className}`}>
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-3">
-          <h3 className="text-sm font-semibold">{symbol}</h3>
-          <span className="text-xs text-sentienx-text-dim">
-            {data.length} candles
-          </span>
-        </div>
-      </div>
       <div ref={chartContainerRef} className="w-full" />
     </div>
   );

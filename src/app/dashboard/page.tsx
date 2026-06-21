@@ -125,7 +125,7 @@ export default async function DashboardPage() {
     { href: "/dashboard/trade", title: "Trade", description: "Execute a new trade", icon: "trending-up", color: "from-[#6366f1] to-[#818cf8]", iconBg: "bg-[#6366f1]/10", iconColor: "text-[#6366f1]" },
     { href: "/dashboard/bots", title: "Run Bot", description: "Automated strategies", icon: "bot", color: "from-emerald-500 to-emerald-400", iconBg: "bg-emerald-500/10", iconColor: "text-emerald-400" },
     { href: "/dashboard/academy", title: "Academy", description: "Learn and improve", icon: "book", color: "from-amber-500 to-amber-400", iconBg: "bg-amber-500/10", iconColor: "text-amber-400" },
-    { href: "/dashboard/affiliate", title: "Affiliate", description: "Earn commissions", icon: "users", color: "from-pink-500 to-pink-400", iconBg: "bg-pink-500/10", iconColor: "text-pink-400" },
+    { href: "/dashboard/bankroll", title: "Bankroll", description: "Manage funds", icon: "wallet", color: "from-cyan-500 to-cyan-400", iconBg: "bg-cyan-500/10", iconColor: "text-cyan-400" },
   ];
 
   return (

@@ -25,8 +25,6 @@ const ALL_NAV = [
   { href: "/dashboard/bankroll", label: "Bankroll", icon: "wallet" },
   { href: "/dashboard/academy", label: "Academy", icon: "book" },
   { href: "/dashboard/crash", label: "Crash Game", icon: "zap", badge: "HOT" },
-  { href: "/dashboard/earnings", label: "Earnings", icon: "dollar-sign" },
-  { href: "/dashboard/affiliate", label: "Affiliate Hub", icon: "users", badge: "EARN" },
 ];
 
 // Bottom tab bar items (portrait mobile)
@@ -209,7 +207,6 @@ function SearchModal({ onClose }: { onClose: () => void }) {
     { icon: "bar-chart", label: "Markets", href: "/dashboard/markets" },
     { icon: "book", label: "Academy", href: "/dashboard/academy" },
     { icon: "wallet", label: "Bankroll", href: "/dashboard/bankroll" },
-    { icon: "users", label: "Affiliate Hub", href: "/dashboard/affiliate" },
   ];
 
   return (

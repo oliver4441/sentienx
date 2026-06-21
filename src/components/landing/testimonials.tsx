@@ -27,9 +27,9 @@ const TESTIMONIALS: Testimonial[] = [
   },
   {
     name: "David Mwangi",
-    role: "Affiliate Partner",
+    role: "Volatility Trader",
     country: "Uganda",
-    text: "The affiliate program is a game changer. I referred 15 traders and my commission grew 40% in the first month. Monthly payouts are instant.",
+    text: "The math-first bot engine is incredible. It only trades when multiple indicators agree, and the Kelly sizing keeps my risk in check. Best trading tool I have used.",
     rating: 5,
   },
   {

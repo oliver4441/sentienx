@@ -15,10 +15,10 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { symbol, contractType, stake, duration, durationUnit } = body;
+    const { symbol, contractType, stake, duration, durationUnit, demo } = body;
 
     // Demo mode -- simulate trade
-    if (isDemo || accessToken === 'demo_virtual_token') {
+    if (demo || isDemo || accessToken === "demo_virtual_token") {
       await new Promise((r) => setTimeout(r, 800)); // Simulate network delay
       const won = Math.random() > 0.48;
       const profit = won ? stake * 0.85 : -stake;
