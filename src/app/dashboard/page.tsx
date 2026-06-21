@@ -133,16 +133,16 @@ export default async function DashboardPage() {
 
       {/* ─── Welcome Header ─────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
             Welcome back, <span className="text-[#6366f1]">{fullname.split(" ")[0]}</span>
           </h1>
           <p className="text-xs sm:text-sm text-[#71717a] mt-0.5 sm:mt-1">
-            {isVirtual ? "Demo Account" : "Real Account"} —{" "}
+            {isVirtual ? "Demo Account" : "Real Account"} --{" "}
             <span className="text-[#00e676]">Connected to Deriv</span>
           </p>
         </div>
-        <Link href="/dashboard/trade" className="btn-primary text-sm self-start sm:self-auto">
+        <Link href="/dashboard/trade" className="btn-primary text-sm self-start sm:self-auto shrink-0">
           New Trade
         </Link>
       </div>
@@ -216,20 +216,24 @@ export default async function DashboardPage() {
       <div>
         <h2 className="text-xs sm:text-sm font-semibold text-[#a1a1aa] uppercase tracking-wider mb-2 sm:mb-3">Quick Actions</h2>
         {/* Horizontal scroll on mobile, grid on desktop */}
-        <div className="flex sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 overflow-x-auto sm:overflow-visible scrollbar-hide pb-1 sm:pb-0 -mx-1 px-1 sm:mx-0 sm:px-0">
-          {quickActions.map((action) => (
-            <Link
-              key={action.href}
-              href={action.href}
-              className="stat-card group hover:border-white/[0.15] transition-all flex-shrink-0 w-36 sm:w-auto"
-            >
-              <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl ${action.iconBg} flex items-center justify-center mb-2 sm:mb-3 group-hover:scale-110 transition-transform`}>
-                <Icon name={action.icon} className={`w-4 h-4 sm:w-5 sm:h-5 ${action.iconColor}`} />
-              </div>
-              <p className="font-semibold text-sm text-[#f4f4f5]">{action.title}</p>
-              <p className="text-[10px] sm:text-xs text-[#71717a] mt-0.5">{action.description}</p>
-            </Link>
-          ))}
+        <div className="relative -mx-3 px-3 sm:mx-0 sm:px-0">
+          <div className="flex sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 overflow-x-auto sm:overflow-visible scrollbar-hide pb-2 sm:pb-0 snap-x snap-mandatory">
+            {quickActions.map((action) => (
+              <Link
+                key={action.href}
+                href={action.href}
+                className="stat-card group hover:border-white/[0.15] transition-all flex-shrink-0 w-[150px] sm:w-auto snap-start"
+              >
+                <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl ${action.iconBg} flex items-center justify-center mb-2 sm:mb-3 group-hover:scale-110 transition-transform`}>
+                  <Icon name={action.icon} className={`w-4 h-4 sm:w-5 sm:h-5 ${action.iconColor}`} />
+                </div>
+                <p className="font-semibold text-sm text-[#f4f4f5]">{action.title}</p>
+                <p className="text-[10px] sm:text-xs text-[#71717a] mt-0.5">{action.description}</p>
+              </Link>
+            ))}
+          </div>
+          {/* Scroll fade indicator on mobile */}
+          <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#070709] to-transparent sm:hidden" />
         </div>
       </div>
 
@@ -239,8 +243,8 @@ export default async function DashboardPage() {
         <div className="lg:col-span-2 stat-card">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
             <h2 className="text-xs sm:text-sm font-semibold text-[#a1a1aa] uppercase tracking-wider">Market Overview</h2>
-            <Link href="/dashboard/markets" className="text-[10px] sm:text-xs text-[#6366f1] hover:text-[#818cf8] transition-colors">
-              View all →
+            <Link href="/dashboard/markets" className="text-[10px] sm:text-xs text-[#6366f1] hover:text-[#818cf8] transition-colors shrink-0">
+              View all
             </Link>
           </div>
           <div className="space-y-1.5 sm:space-y-2">
@@ -261,7 +265,7 @@ export default async function DashboardPage() {
                     <p className="text-[10px] sm:text-xs text-[#71717a] tabular-nums">{market.price?.toFixed(2)}</p>
                   </div>
                 </div>
-                <span className={`text-xs sm:text-sm font-medium tabular-nums shrink-0 ${(market.change ?? 0) >= 0 ? "text-[#00e676]" : "text-[#ff1744]"}`}>
+                <span className={`text-xs sm:text-sm font-medium tabular-nums shrink-0 ml-2 ${(market.change ?? 0) >= 0 ? "text-[#00e676]" : "text-[#ff1744]"}`}>
                   {(market.change ?? 0) >= 0 ? "+" : ""}{(market.change ?? 0).toFixed(2)}%
                 </span>
               </Link>
@@ -276,8 +280,8 @@ export default async function DashboardPage() {
         <div className="stat-card">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
             <h2 className="text-xs sm:text-sm font-semibold text-[#a1a1aa] uppercase tracking-wider">Recent Activity</h2>
-            <Link href="/dashboard/history" className="text-[10px] sm:text-xs text-[#6366f1] hover:text-[#818cf8] transition-colors">
-              View all →
+            <Link href="/dashboard/history" className="text-[10px] sm:text-xs text-[#6366f1] hover:text-[#818cf8] transition-colors shrink-0">
+              View all
             </Link>
           </div>
           {recentActivity.length > 0 ? (
@@ -295,7 +299,7 @@ export default async function DashboardPage() {
                       </span>
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs sm:text-sm font-medium text-[#f4f4f5] truncate max-w-[120px] sm:max-w-[200px]">{activity.description}</p>
+                      <p className="text-xs sm:text-sm font-medium text-[#f4f4f5] truncate max-w-[140px] sm:max-w-[200px]">{activity.description}</p>
                       <p className="text-[10px] text-[#71717a]">{new Date(activity.time * 1000).toLocaleTimeString()}</p>
                     </div>
                   </div>

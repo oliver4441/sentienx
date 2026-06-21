@@ -75,7 +75,7 @@ export function LandingNavbar() {
           {/* Mobile hamburger */}
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="md:hidden p-2 rounded-lg hover:bg-white/[0.05] transition-colors text-[#a1a1aa]"
+            className="md:hidden p-2.5 rounded-lg hover:bg-white/[0.05] transition-colors text-[#a1a1aa] min-h-[44px] min-w-[44px] flex items-center justify-center"
             aria-label="Toggle menu"
           >
             {mobileOpen ? (

@@ -371,6 +371,11 @@
   .stat-card .text-xs {
     font-size: 0.625rem !important;
   }
+
+  /* Prevent text overflow on tiny screens */
+  .truncate {
+    max-width: 120px;
+  }
 }
 
 /* ─── Tablet Portrait (768px–1024px) ────────────────────────────────── */

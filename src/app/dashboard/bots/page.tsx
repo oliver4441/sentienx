@@ -99,7 +99,7 @@ function BotCard({
 
       {/* Stats */}
       {botState && botState.tradeCount > 0 && (
-        <div className="grid grid-cols-4 gap-1.5 sm:gap-2 mb-2 sm:mb-3 p-2 rounded-lg bg-[#070709]/50">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2 mb-2 sm:mb-3 p-2 rounded-lg bg-[#070709]/50">
           <div className="text-center">
             <p className="text-[9px] sm:text-xs text-[#71717a]">Trades</p>
             <p className="text-xs sm:text-sm font-bold">{botState.tradeCount}</p>
@@ -126,15 +126,15 @@ function BotCard({
         <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mb-2 sm:mb-3 p-2 rounded-lg bg-[#070709]/50">
           <div className="text-center">
             <p className="text-[9px] sm:text-xs text-[#71717a]">Regime</p>
-            <p className="text-xs sm:text-sm font-bold text-[#818cf8]">{botState.regime}</p>
+            <p className="text-[10px] sm:text-sm font-bold text-[#818cf8]">{botState.regime}</p>
           </div>
           <div className="text-center">
             <p className="text-[9px] sm:text-xs text-[#71717a]">Confluence</p>
-            <p className="text-xs sm:text-sm font-bold">{botState.confluenceScore.toFixed(2)}</p>
+            <p className="text-[10px] sm:text-sm font-bold">{botState.confluenceScore.toFixed(2)}</p>
           </div>
           <div className="text-center">
             <p className="text-[9px] sm:text-xs text-[#71717a]">Kelly $</p>
-            <p className="text-xs sm:text-sm font-bold text-[#00e676]">${botState.kellyStake.toFixed(2)}</p>
+            <p className="text-[10px] sm:text-sm font-bold text-[#00e676]">${botState.kellyStake.toFixed(2)}</p>
           </div>
         </div>
       )}
@@ -148,7 +148,7 @@ function BotCard({
             <select
               value={selectedStrategy}
               onChange={(e) => setSelectedStrategy(e.target.value)}
-              className="w-full bg-[#070709] border border-white/[0.08] rounded-lg px-2.5 py-2 text-sm"
+              className="w-full bg-[#070709] border border-white/[0.08] rounded-lg px-2.5 py-2.5 text-sm min-h-[44px]"
             >
               {STRATEGIES.map((s) => (
                 <option key={s.value} value={s.value}>{s.label} -- {s.desc}</option>
@@ -163,7 +163,7 @@ function BotCard({
               <select
                 value={symbol}
                 onChange={(e) => setSymbol(e.target.value)}
-                className="w-full bg-[#070709] border border-white/[0.08] rounded-lg px-2.5 py-2 text-sm"
+                className="w-full bg-[#070709] border border-white/[0.08] rounded-lg px-2.5 py-2.5 text-sm min-h-[44px]"
               >
                 {SYMBOLS.map((s) => (
                   <option key={s.value} value={s.value}>{s.label}</option>
@@ -173,7 +173,7 @@ function BotCard({
             <div>
               <label className="text-[10px] sm:text-xs text-[#71717a] block mb-1">Base Stake ($)</label>
               <input type="number" value={stake} onChange={(e) => setStake(Number(e.target.value))} min={0.35} step={0.5}
-                className="w-full bg-[#070709] border border-white/[0.08] rounded-lg px-2.5 py-2 text-sm" />
+                className="w-full bg-[#070709] border border-white/[0.08] rounded-lg px-2.5 py-2.5 text-sm min-h-[44px]" />
             </div>
           </div>
 
@@ -182,9 +182,9 @@ function BotCard({
             <label className="text-[10px] sm:text-xs text-[#71717a] block mb-1">Duration</label>
             <div className="flex gap-1.5">
               <input type="number" value={duration} onChange={(e) => setDuration(Number(e.target.value))} min={1}
-                className="w-20 bg-[#070709] border border-white/[0.08] rounded-lg px-2.5 py-2 text-sm" />
+                className="w-20 bg-[#070709] border border-white/[0.08] rounded-lg px-2.5 py-2.5 text-sm min-h-[44px]" />
               <select value={durationUnit} onChange={(e) => setDurationUnit(e.target.value)}
-                className="flex-1 bg-[#070709] border border-white/[0.08] rounded-lg px-2 py-2 text-sm">
+                className="flex-1 bg-[#070709] border border-white/[0.08] rounded-lg px-2 py-2.5 text-sm min-h-[44px]">
                 <option value="t">ticks</option>
                 <option value="s">seconds</option>
                 <option value="m">minutes</option>
@@ -195,34 +195,34 @@ function BotCard({
           {/* Math-First Parameters */}
           <div className="border-t border-white/[0.06] pt-2">
             <p className="text-[10px] sm:text-xs text-[#818cf8] font-semibold mb-2">Math-First Parameters</p>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
                 <label className="text-[10px] sm:text-xs text-[#71717a] block mb-1">Min Confluence (0-1)</label>
                 <input type="number" value={minConfluenceScore} onChange={(e) => setMinConfluenceScore(Number(e.target.value))} min={0.1} max={0.95} step={0.05}
-                  className="w-full bg-[#070709] border border-white/[0.08] rounded-lg px-2.5 py-2 text-sm" />
+                  className="w-full bg-[#070709] border border-white/[0.08] rounded-lg px-2.5 py-2.5 text-sm min-h-[44px]" />
               </div>
               <div>
                 <label className="text-[10px] sm:text-xs text-[#71717a] block mb-1">Kelly Fraction (0-1)</label>
                 <input type="number" value={kellyFraction} onChange={(e) => setKellyFraction(Number(e.target.value))} min={0.05} max={1} step={0.05}
-                  className="w-full bg-[#070709] border border-white/[0.08] rounded-lg px-2.5 py-2 text-sm" />
+                  className="w-full bg-[#070709] border border-white/[0.08] rounded-lg px-2.5 py-2.5 text-sm min-h-[44px]" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-2 mt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
               <div>
                 <label className="text-[10px] sm:text-xs text-[#71717a] block mb-1">Take Profit ($)</label>
                 <input type="number" value={takeProfit} onChange={(e) => setTakeProfit(Number(e.target.value))} min={1}
-                  className="w-full bg-[#070709] border border-white/[0.08] rounded-lg px-2.5 py-2 text-sm" />
+                  className="w-full bg-[#070709] border border-white/[0.08] rounded-lg px-2.5 py-2.5 text-sm min-h-[44px]" />
               </div>
               <div>
                 <label className="text-[10px] sm:text-xs text-[#71717a] block mb-1">Stop Loss ($)</label>
                 <input type="number" value={stopLoss} onChange={(e) => setStopLoss(Number(e.target.value))} min={1}
-                  className="w-full bg-[#070709] border border-white/[0.08] rounded-lg px-2.5 py-2 text-sm" />
+                  className="w-full bg-[#070709] border border-white/[0.08] rounded-lg px-2.5 py-2.5 text-sm min-h-[44px]" />
               </div>
             </div>
-            <div>
+            <div className="mt-2">
               <label className="text-[10px] sm:text-xs text-[#71717a] block mb-1">Max Consecutive Losses</label>
               <input type="number" value={maxConsecutiveLosses} onChange={(e) => setMaxConsecutiveLosses(Number(e.target.value))} min={1} max={20}
-                className="w-full bg-[#070709] border border-white/[0.08] rounded-lg px-2.5 py-2 text-sm" />
+                className="w-full bg-[#070709] border border-white/[0.08] rounded-lg px-2.5 py-2.5 text-sm min-h-[44px]" />
             </div>
           </div>
         </div>
@@ -234,14 +234,14 @@ function BotCard({
           <>
             <button
               onClick={() => setShowConfig(!showConfig)}
-              className="flex-1 py-2.5 rounded-lg text-xs sm:text-sm font-medium bg-[#070709] border border-white/[0.08] hover:border-white/[0.15] transition-colors"
+              className="flex-1 py-3 rounded-lg text-xs sm:text-sm font-medium bg-[#070709] border border-white/[0.08] hover:border-white/[0.15] transition-colors min-h-[48px]"
             >
               {showConfig ? 'Cancel' : 'Configure'}
             </button>
             {showConfig && (
               <button
                 onClick={handleStart}
-                className="flex-1 py-2.5 rounded-lg text-xs sm:text-sm font-medium bg-[#00e676] hover:bg-[#00c853] text-black font-semibold transition-colors"
+                className="flex-1 py-3 rounded-lg text-xs sm:text-sm font-medium bg-[#00e676] hover:bg-[#00c853] text-black font-semibold transition-colors min-h-[48px]"
               >
                 Start Bot
               </button>
@@ -250,20 +250,20 @@ function BotCard({
         )}
         {isRunning && (
           <>
-            <button onClick={onPause} className="flex-1 py-2.5 rounded-lg text-xs sm:text-sm font-medium bg-yellow-600/20 text-yellow-400 hover:bg-yellow-600/30 transition-colors">
+            <button onClick={onPause} className="flex-1 py-3 rounded-lg text-xs sm:text-sm font-medium bg-yellow-600/20 text-yellow-400 hover:bg-yellow-600/30 transition-colors min-h-[48px]">
               Pause
             </button>
-            <button onClick={onStop} className="flex-1 py-2.5 rounded-lg text-xs sm:text-sm font-medium bg-red-600/20 text-red-400 hover:bg-red-600/30 transition-colors">
+            <button onClick={onStop} className="flex-1 py-3 rounded-lg text-xs sm:text-sm font-medium bg-red-600/20 text-red-400 hover:bg-red-600/30 transition-colors min-h-[48px]">
               Stop
             </button>
           </>
         )}
         {isPaused && (
           <>
-            <button onClick={onResume} className="flex-1 py-2.5 rounded-lg text-xs sm:text-sm font-medium bg-[#00e676] hover:bg-[#00c853] text-black font-semibold transition-colors">
+            <button onClick={onResume} className="flex-1 py-3 rounded-lg text-xs sm:text-sm font-medium bg-[#00e676] hover:bg-[#00c853] text-black font-semibold transition-colors min-h-[48px]">
               Resume
             </button>
-            <button onClick={onStop} className="flex-1 py-2.5 rounded-lg text-xs sm:text-sm font-medium bg-red-600/20 text-red-400 hover:bg-red-600/30 transition-colors">
+            <button onClick={onStop} className="flex-1 py-3 rounded-lg text-xs sm:text-sm font-medium bg-red-600/20 text-red-400 hover:bg-red-600/30 transition-colors min-h-[48px]">
               Stop
             </button>
           </>
@@ -273,10 +273,10 @@ function BotCard({
       {/* Trade Log */}
       {botState && botState.tradeLog.length > 0 && (
         <details className="mt-2 sm:mt-3">
-          <summary className="text-[10px] sm:text-xs text-[#71717a] cursor-pointer hover:text-[#f4f4f5]">
+          <summary className="text-[10px] sm:text-xs text-[#71717a] cursor-pointer hover:text-[#f4f4f5] py-1">
             Trade Log ({botState.tradeLog.length})
           </summary>
-          <div className="mt-2 max-h-32 sm:max-h-40 overflow-y-auto space-y-1 text-[10px] sm:text-xs font-mono no-overscroll">
+          <div className="mt-2 max-h-32 sm:max-h-48 overflow-y-auto space-y-1 text-[10px] sm:text-xs font-mono no-overscroll">
             {botState.tradeLog.slice(0, 30).map((entry, i) => (
               <div key={i} className={`p-1.5 rounded ${
                 entry.type === 'error' ? 'bg-red-500/10 text-red-400' :
@@ -341,13 +341,13 @@ export default function BotsPage() {
           <h3 className="font-semibold text-green-400 text-xs sm:text-sm mb-2">
             Active Bots ({Array.from(bots.values()).filter((b) => b.status === 'running').length})
           </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
             {Array.from(bots.entries())
               .filter(([, state]) => state.status === 'running')
               .map(([id, state]) => {
                 const pnl = state.totalProfit - state.totalLoss;
                 return (
-                  <div key={id} className="text-center p-2 rounded-lg bg-[#070709]/50">
+                  <div key={id} className="text-center p-2.5 rounded-lg bg-[#070709]/50">
                     <p className="text-[10px] sm:text-xs text-[#71717a] truncate">{id}</p>
                     <p className={`text-xs sm:text-sm font-bold ${pnl >= 0 ? 'text-[#00e676]' : 'text-[#ff1744]'}`}>
                       ${pnl.toFixed(2)}
@@ -361,7 +361,7 @@ export default function BotsPage() {
       )}
 
       {/* Bot Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
         {Object.entries(strategies).map(([id, strategy]) => (
           <BotCard
             key={id}

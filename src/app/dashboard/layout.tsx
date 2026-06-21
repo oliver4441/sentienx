@@ -84,7 +84,7 @@ function NotificationsPanel({ onClose }: { onClose: () => void }) {
   ];
 
   return (
-    <div ref={panelRef} className="absolute right-0 top-full mt-2 w-72 sm:w-80 rounded-2xl border border-white/[0.08] bg-[#0f0f14] shadow-2xl shadow-black/40 z-50 overflow-hidden">
+    <div ref={panelRef} className="absolute right-0 top-full mt-2 w-72 sm:w-80 max-w-[calc(100vw-1rem)] rounded-2xl border border-white/[0.08] bg-[#0f0f14] shadow-2xl shadow-black/40 z-50 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
         <h3 className="text-sm font-semibold text-[#f4f4f5]">Notifications</h3>
         <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#6366f1]/10 text-[#818cf8]">
@@ -140,7 +140,7 @@ function UserDropdown({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div ref={dropdownRef} className="absolute right-0 top-full mt-2 w-72 rounded-2xl border border-white/[0.08] bg-[#0f0f14] shadow-2xl shadow-black/40 z-50 overflow-hidden">
+    <div ref={dropdownRef} className="absolute right-0 top-full mt-2 w-72 max-w-[calc(100vw-1rem)] rounded-2xl border border-white/[0.08] bg-[#0f0f14] shadow-2xl shadow-black/40 z-50 overflow-hidden">
       <div className="px-4 py-4 border-b border-white/[0.06]">
         <div className="flex items-center gap-3">
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 ${
@@ -213,9 +213,9 @@ function SearchModal({ onClose }: { onClose: () => void }) {
   ];
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-start justify-center pt-[10vh] sm:pt-[15vh]">
+    <div className="fixed inset-0 z-[60] flex items-start justify-center px-3 pt-[8vh] sm:pt-[15vh]">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-lg mx-4 rounded-2xl border border-white/[0.08] bg-[#0f0f14] shadow-2xl shadow-black/50 overflow-hidden">
+      <div className="relative w-full max-w-lg rounded-2xl border border-white/[0.08] bg-[#0f0f14] shadow-2xl shadow-black/50 overflow-hidden">
         <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.06]">
           <Icon name="search" className="w-5 h-5 text-[#71717a] shrink-0" />
           <input
@@ -259,14 +259,13 @@ function BottomTabBar() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#0a0a0f]/95 backdrop-blur-xl border-t border-white/[0.06] safe-area-bottom md:hidden">
-      <div className="flex items-center justify-around h-16 px-2">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#0a0a0f]/95 backdrop-blur-xl border-t border-white/[0.08] md:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+      <div className="flex items-center justify-around h-14 px-1">
         {BOTTOM_TABS.map((tab) => {
           const isActive = tab.href === "/dashboard"
             ? pathname === "/dashboard"
             : pathname.startsWith(tab.href) && tab.href !== "/dashboard/more";
 
-          // "More" is active if on any page not covered by other tabs
           const isMoreActive = tab.href === "/dashboard/more" && !BOTTOM_TABS.some(
             t => t.href !== "/dashboard/more" && (t.href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(t.href))
           );
@@ -277,17 +276,14 @@ function BottomTabBar() {
             <Link
               key={tab.href}
               href={tab.href}
-              className={`flex flex-col items-center justify-center gap-1 flex-1 py-1.5 rounded-xl transition-colors ${
+              className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-1 rounded-xl transition-all min-h-[44px] ${
                 active ? "text-[#818cf8]" : "text-[#71717a]"
               }`}
             >
-              <div className="relative">
+              <div className={`relative p-1 rounded-lg transition-colors ${active ? "bg-[#6366f1]/10" : ""}`}>
                 <Icon name={tab.icon} className="w-5 h-5" />
-                {active && (
-                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#6366f1]" />
-                )}
               </div>
-              <span className="text-[10px] font-medium">{tab.label}</span>
+              <span className={`text-[10px] font-medium ${active ? "text-[#818cf8]" : "text-[#71717a]"}`}>{tab.label}</span>
             </Link>
           );
         })}
@@ -321,7 +317,7 @@ function MoreMenu({ onClose }: { onClose: () => void }) {
   );
 
   return (
-    <div ref={menuRef} className="absolute right-0 bottom-full mb-2 w-56 rounded-2xl border border-white/[0.08] bg-[#0f0f14] shadow-2xl shadow-black/40 z-50 overflow-hidden">
+    <div ref={menuRef} className="absolute right-0 bottom-full mb-2 w-56 max-w-[calc(100vw-2rem)] rounded-2xl border border-white/[0.08] bg-[#0f0f14] shadow-2xl shadow-black/40 z-50 overflow-hidden">
       <div className="p-1.5 max-h-[60vh] overflow-y-auto">
         {moreItems.map((item) => (
           <Link
@@ -516,7 +512,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               {isMobile && !isLandscape && (
                 <button
                   onClick={() => setSidebarOpen(!sidebarOpen)}
-                  className="p-2 -ml-1 rounded-xl hover:bg-white/[0.05] transition-colors text-[#a1a1aa] shrink-0"
+                  className="p-2.5 -ml-1 rounded-xl hover:bg-white/[0.05] transition-colors text-[#a1a1aa] shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center"
                 >
                   <Icon name="menu" className="w-5 h-5" />
                 </button>
@@ -629,8 +625,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         )}
 
         {/* Page content */}
-        <main className={`flex-1 overflow-y-auto ${isMobile && !isLandscape ? "pb-20" : "pb-6"}`}>
-          <div className="p-3 sm:p-4 md:p-6">
+        <main className={`flex-1 overflow-y-auto ${isMobile && !isLandscape ? "pb-24" : "pb-6"}`}>
+          <div className="p-3 sm:p-4 md:p-6 max-w-full overflow-x-hidden">
             {children}
           </div>
         </main>
