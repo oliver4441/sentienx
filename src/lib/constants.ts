@@ -28,10 +28,8 @@ export const DERIV_CONFIG = {
   // so Deriv can route users to the correct API version
   legacyAppId: process.env.DERIV_LEGACY_APP_ID || "113241",
 
-  // Partner referral token — the value from your Deriv Partners referral link
-  // For track.deriv.com links: use the full path segment (e.g., nXuHksD9Gfb1hit6RV3zsGNd7ZgqdRLk)
-  // For /rx?sidc= links: use the sidc UUID value
-  // This is passed as `affiliate_token` in OAuth URLs for sign-up/sign-in tracking
+  // Affiliate token -- set via DERIV_AFFILIATE_TOKEN env var if you have one
+  // This is passed as `t` parameter in OAuth URLs for Deriv app tracking
   affiliateToken: process.env.DERIV_AFFILIATE_TOKEN || "",
 
   // OAuth redirect URI — must match exactly what's registered in your Deriv app

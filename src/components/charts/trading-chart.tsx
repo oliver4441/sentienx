@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import {
   createChart,
   type IChartApi,
@@ -22,25 +22,32 @@ interface TradingChartProps {
 export function TradingChart({
   symbol,
   data = [],
-  height = 400,
+  height = 380,
   className = "",
 }: TradingChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const [chartReady, setChartReady] = useState(false);
 
   const initChart = useCallback(() => {
     if (!chartContainerRef.current) return;
 
+    // Clean up existing chart
+    if (chartRef.current) {
+      chartRef.current.remove();
+      chartRef.current = null;
+      seriesRef.current = null;
+    }
+
     const container = chartContainerRef.current;
-    const isMobile = window.innerWidth < 640;
-    const chartHeight = isMobile ? 250 : height;
+    const containerHeight = container.clientWidth < 640 ? 250 : height;
 
     const chart = createChart(container, {
       layout: {
         background: { type: ColorType.Solid, color: "transparent" },
         textColor: "#a1a1aa",
-        fontSize: isMobile ? 10 : 12,
+        fontSize: 11,
       },
       grid: {
         vertLines: { color: "rgba(255, 255, 255, 0.04)" },
@@ -65,11 +72,11 @@ export function TradingChart({
       },
       timeScale: {
         borderColor: "rgba(255, 255, 255, 0.06)",
-        timeVisible: !isMobile,
+        timeVisible: true,
         secondsVisible: false,
       },
       width: container.clientWidth,
-      height: chartHeight,
+      height: containerHeight,
     });
 
     const candlestickSeries = chart.addSeries(CandlestickSeries, {
@@ -83,6 +90,7 @@ export function TradingChart({
 
     chartRef.current = chart;
     seriesRef.current = candlestickSeries;
+    setChartReady(true);
 
     if (data.length > 0) {
       candlestickSeries.setData(data);
@@ -91,13 +99,9 @@ export function TradingChart({
 
     const handleResize = () => {
       if (chartContainerRef.current && chartRef.current) {
-        const newIsMobile = window.innerWidth < 640;
-        chartRef.current.applyOptions({
-          width: chartContainerRef.current.clientWidth,
-          height: newIsMobile ? 250 : height,
-          layout: { fontSize: newIsMobile ? 10 : 12 },
-          timeScale: { timeVisible: !newIsMobile },
-        });
+        const w = chartContainerRef.current.clientWidth;
+        const h = w < 640 ? 250 : height;
+        chartRef.current.applyOptions({ width: w, height: h });
       }
     };
 
@@ -109,6 +113,7 @@ export function TradingChart({
       chart.remove();
       chartRef.current = null;
       seriesRef.current = null;
+      setChartReady(false);
     };
   }, [data, height]);
 
@@ -118,13 +123,13 @@ export function TradingChart({
   }, [initChart]);
 
   useEffect(() => {
-    if (seriesRef.current && data.length > 0) {
+    if (seriesRef.current && data.length > 0 && chartReady) {
       seriesRef.current.setData(data);
       if (chartRef.current) {
         chartRef.current.timeScale().fitContent();
       }
     }
-  }, [data]);
+  }, [data, chartReady]);
 
   return (
     <div className={`relative ${className}`}>

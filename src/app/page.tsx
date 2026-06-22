@@ -32,7 +32,7 @@ export default function LandingPage() {
             <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-[#6366f1]/[0.08] border border-[#6366f1]/15">
               <span className="w-2 h-2 rounded-full bg-[#00e676] animate-pulse" />
               <span className="text-sm text-[#818cf8] font-medium">
-                Earn up to 45% commission on every trade
+                Automated trading bots with live charts
               </span>
             </div>
 
@@ -211,10 +211,10 @@ export default function LandingPage() {
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,_#6366f1_0%,_transparent_60%)] opacity-[0.06]" />
           <div className="relative max-w-3xl mx-auto text-center space-y-8">
             <h2 className="text-3xl md:text-5xl font-bold text-[#f4f4f5] tracking-tight">
-              Start Earning Today
+              Start Trading Today
             </h2>
             <p className="text-lg text-[#a1a1aa] max-w-xl mx-auto">
-              Connect your Deriv account in seconds. Start trading, referring, and earning commissions — all from one platform.
+              Connect your Deriv account in seconds. Start trading with automated bots and live charts — all from one platform.
             </p>
             <div className="flex items-center justify-center gap-4">
               <a href="/register" className="btn-primary text-base px-8 py-4">

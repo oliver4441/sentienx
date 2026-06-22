@@ -6,7 +6,7 @@ import { rateLimit, getClientIdentifier } from "@/lib/rate-limit";
 // Candles API: 30 requests per minute per IP
 const CANDLES_LIMIT = { maxRequests: 30, windowMs: 60 * 1000 };
 
-const VALID_GRANULARITIES = [60, 120, 180, 300, 600, 900, 1800, 3600, 7200, 86400];
+const VALID_GRANULARITIES = [60, 120, 180, 300, 600, 900, 1800, 3600, 7200, 14400, 28800, 86400];
 
 export async function GET(request: NextRequest) {
   // Rate limit
@@ -42,8 +42,11 @@ export async function GET(request: NextRequest) {
     const to = Math.floor(Date.now() / 1000);
     const from = to - granularity * count;
 
+    // Use Deriv's public WebSocket endpoint via HTTP fetch to the ticks_history API
+    // The correct endpoint is the WebSocket-based ticks_history with style: "candles"
+    // We use the REST proxy at /trading/v1/options/ticks_history
     const response = await fetch(
-      `${DERIV_CONFIG.apiBase}/trading/v1/options/candles`,
+      `${DERIV_CONFIG.apiBase}/trading/v1/options/ticks_history`,
       {
         method: "POST",
         headers: {
@@ -51,24 +54,62 @@ export async function GET(request: NextRequest) {
           "Deriv-App-ID": String(DERIV_CONFIG.appId),
         },
         body: JSON.stringify({
-          candles: 1,
-          symbol,
+          ticks_history: symbol,
+          style: "candles",
           granularity,
           start: from,
           end: to,
           count,
-          style: "candles",
+          adjust_start_time: 1,
         }),
       }
     );
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Candles API error:", errorText);
-      return NextResponse.json(
-        { error: "Failed to fetch candles from Deriv" },
-        { status: response.status }
+      console.error("Candles API error:", response.status, errorText);
+
+      // Fallback: try the candles endpoint
+      const fallbackRes = await fetch(
+        `${DERIV_CONFIG.apiBase}/trading/v1/options/candles`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Deriv-App-ID": String(DERIV_CONFIG.appId),
+          },
+          body: JSON.stringify({
+            candles: 1,
+            symbol,
+            granularity,
+            start: from,
+            end: to,
+            count,
+            style: "candles",
+          }),
+        }
       );
+
+      if (!fallbackRes.ok) {
+        return NextResponse.json(
+          { error: "Failed to fetch candles from Deriv" },
+          { status: 502 }
+        );
+      }
+
+      const fallbackData = await fallbackRes.json();
+      if (fallbackData.error) {
+        return NextResponse.json(
+          { error: fallbackData.error.message || "Deriv API error" },
+          { status: 400 }
+        );
+      }
+
+      return NextResponse.json({
+        candles: fallbackData.candles || [],
+        granularity,
+        symbol,
+      });
     }
 
     const data = await response.json();
@@ -80,8 +121,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Transform candles to our format
+    const candles = (data.candles || []).map(
+      (c: { epoch: number; open: number; high: number; low: number; close: number }) => ({
+        epoch: c.epoch,
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
+      })
+    );
+
     return NextResponse.json({
-      candles: data.candles || [],
+      candles,
       granularity,
       symbol,
     });
