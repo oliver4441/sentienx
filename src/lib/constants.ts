@@ -33,9 +33,10 @@ export const DERIV_CONFIG = {
   affiliateToken: process.env.DERIV_AFFILIATE_TOKEN || "",
 
   // OAuth redirect URI — must match exactly what's registered in your Deriv app
+  // Set via DERIV_REDIRECT_URI env var. Default: sentienx.vercel.app production URL
   redirectUri:
     process.env.DERIV_REDIRECT_URI ||
-    "https://sentienx.com/api/auth/deriv/callback",
+    "https://sentienx.vercel.app/api/auth/deriv/callback",
 
   // OAuth endpoints
   oauthUrl: "https://auth.deriv.com/oauth2/auth",

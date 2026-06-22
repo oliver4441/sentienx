@@ -79,20 +79,24 @@ export class DerivAuth {
  }
 
  const params = new URLSearchParams({
- app_id: DERIV_CONFIG.appId,
- redirect_uri: DERIV_CONFIG.redirectUri,
- response_type: "code",
- scope: "read trade payments admin",
- code_challenge: codeChallenge,
- code_challenge_method: "S256",
- state: state,
- })
+   response_type: "code",
+   client_id: String(DERIV_CONFIG.appId),
+   redirect_uri: DERIV_CONFIG.redirectUri,
+   scope: "trade account_manage",
+   code_challenge: codeChallenge,
+   code_challenge_method: "S256",
+   state: state,
+ });
 
- if (DERIV_CONFIG.affiliateToken) {
- params.append("t", DERIV_CONFIG.affiliateToken)
+ // Legacy app_id parameter for Deriv API app routing
+ if (DERIV_CONFIG.legacyAppId) {
+   params.append("app_id", String(DERIV_CONFIG.legacyAppId));
  }
 
- return `${DERIV_CONFIG.oauthUrl}?${params.toString()}`
+ // Force showing the login/consent screen
+ params.append("prompt", "login");
+
+ return `${DERIV_CONFIG.oauthUrl}?${params.toString()}`;
  }
 
  async exchangeCode(

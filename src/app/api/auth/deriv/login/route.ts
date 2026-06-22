@@ -101,14 +101,5 @@ function buildAuthUrl(codeChallenge: string, state: string, isRegistration: bool
   // Force showing the login/consent screen even if previously authorized
   params.append("prompt", "login");
 
-  // Partner referral tracking — earns commission on referred users
-  // Use affiliate_token for OAuth sign-in tracking
-  if (DERIV_CONFIG.affiliateToken) {
-    params.append("affiliate_token", DERIV_CONFIG.affiliateToken);
-    params.append("utm_campaign", "dynamicworks");
-    params.append("utm_medium", "affiliate");
-    params.append("utm_source", "CU140274");
-  }
-
   return `${DERIV_CONFIG.oauthUrl}?${params.toString()}`;
 }

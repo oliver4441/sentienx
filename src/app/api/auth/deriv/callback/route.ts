@@ -35,7 +35,6 @@ export async function GET(request: NextRequest) {
   const errorDescription = searchParams.get("error_description");
 
   // Check for Deriv's token-based response (acctN/tokenN/curN format)
-  // This happens when the OAuth app uses token/implicit grant instead of authorization code
   const allParams: Record<string, string> = {};
   searchParams.forEach((value, key) => { allParams[key] = value; });
 
@@ -52,10 +51,10 @@ export async function GET(request: NextRequest) {
   }
   const hasTokenResponse = accounts.length > 0;
 
-  // Log everything Deriv sends us
-  console.log("[Deriv Callback] Full URL:", request.url);
   console.log("[Deriv Callback] Has code:", !!code, "| Has token response:", hasTokenResponse, "| Accounts:", accounts.length);
   console.log("[Deriv Callback] Has error:", !!error);
+  console.log("[Deriv Callback] Config client_id:", DERIV_CONFIG.appId);
+  console.log("[Deriv Callback] Config redirect_uri:", DERIV_CONFIG.redirectUri);
 
   if (error) {
     console.log("[Deriv Callback] Error from Deriv:", error, errorDescription);
@@ -86,19 +85,16 @@ export async function GET(request: NextRequest) {
     const redirectUrl = new URL("/dashboard", request.url);
     const redirectResponse = NextResponse.redirect(redirectUrl);
 
-    // Set the first account's access token
     redirectResponse.cookies.set("deriv_access_token", accounts[0].token, {
       ...cookieOpts,
       maxAge: 3600,
     });
 
-    // Store all accounts info as a JSON cookie
     redirectResponse.cookies.set("deriv_accounts", JSON.stringify(accounts), {
       ...cookieOpts,
       maxAge: 3600,
     });
 
-    // Set session marker for middleware
     redirectResponse.cookies.set("deriv_session", "1", {
       httpOnly: false,
       secure: isProduction,
@@ -107,7 +103,6 @@ export async function GET(request: NextRequest) {
       path: "/",
     });
 
-    // Clear PKCE cookies
     redirectResponse.cookies.set("deriv_code_verifier", "", { maxAge: 0, path: "/" });
     redirectResponse.cookies.set("deriv_oauth_state", "", { maxAge: 0, path: "/" });
 
@@ -116,22 +111,15 @@ export async function GET(request: NextRequest) {
 
   if (!code) {
     console.log("[Deriv Callback] No code and no token response");
-    return NextResponse.json({
-      error: "missing_code",
-      hint: "Deriv redirected back without an authorization code or token",
-      debug: {
-        fullUrl: request.url,
-        params: allParams,
-        hasState: !!state,
-        hasError: !!error,
-        accountsFound: accounts.length,
-      },
-    }, { status: 400 });
+    return NextResponse.redirect(
+      new URL("/login?error=missing_code", request.url)
+    );
   }
 
   // Verify state to prevent CSRF
   const storedState = request.cookies.get("deriv_oauth_state")?.value;
   if (!storedState || storedState !== state) {
+    console.log("[Deriv Callback] State mismatch. Stored:", storedState?.slice(0, 8), "Received:", state?.slice(0, 8));
     return NextResponse.redirect(
       new URL("/login?error=invalid_state", request.url)
     );
@@ -140,13 +128,15 @@ export async function GET(request: NextRequest) {
   // Get the code verifier
   const codeVerifier = request.cookies.get("deriv_code_verifier")?.value;
   if (!codeVerifier) {
+    console.log("[Deriv Callback] Missing code verifier cookie");
     return NextResponse.redirect(
       new URL("/login?error=missing_verifier", request.url)
     );
   }
 
   try {
-    const body = new URLSearchParams({
+    // Build the token exchange request
+    const tokenBody = new URLSearchParams({
       grant_type: "authorization_code",
       client_id: String(DERIV_CONFIG.appId),
       code: code,
@@ -154,21 +144,62 @@ export async function GET(request: NextRequest) {
       code_verifier: codeVerifier,
     });
 
+    console.log("[Deriv Callback] Token exchange request:", {
+      url: DERIV_CONFIG.tokenUrl,
+      client_id: DERIV_CONFIG.appId,
+      redirect_uri: DERIV_CONFIG.redirectUri,
+      code_length: code.length,
+      verifier_length: codeVerifier.length,
+    });
+
     const response = await fetch(DERIV_CONFIG.tokenUrl, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: body.toString(),
+      body: tokenBody.toString(),
     });
 
+    const responseText = await response.text();
+    console.log("[Deriv Callback] Token exchange response status:", response.status);
+    console.log("[Deriv Callback] Token exchange response body:", responseText.slice(0, 500));
+
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Token exchange failed:", response.status, errorText);
+      console.error("[Deriv Callback] Token exchange failed:", response.status, responseText);
+
+      // Try to parse the error for a user-friendly message
+      let errorDetail = "token_exchange_failed";
+      try {
+        const errorJson = JSON.parse(responseText);
+        if (errorJson.error) {
+          errorDetail = errorJson.error;
+        }
+        if (errorJson.error_description) {
+          errorDetail += ": " + errorJson.error_description;
+        }
+      } catch {
+        errorDetail = `token_exchange_failed (${response.status})`;
+      }
+
       return NextResponse.redirect(
-        new URL(`/login?error=token_exchange_failed&code=derivauth${response.status}`, request.url)
+        new URL(`/login?error=${encodeURIComponent(errorDetail)}`, request.url)
       );
     }
 
-    const tokenData = await response.json();
+    let tokenData;
+    try {
+      tokenData = JSON.parse(responseText);
+    } catch {
+      console.error("[Deriv Callback] Failed to parse token response as JSON");
+      return NextResponse.redirect(
+        new URL("/login?error=invalid_token_response", request.url)
+      );
+    }
+
+    if (!tokenData.access_token) {
+      console.error("[Deriv Callback] No access_token in response:", Object.keys(tokenData));
+      return NextResponse.redirect(
+        new URL("/login?error=no_access_token", request.url)
+      );
+    }
 
     const isProduction = process.env.NODE_ENV === "production";
     const cookieOpts = {
@@ -181,21 +212,18 @@ export async function GET(request: NextRequest) {
     const redirectUrl = new URL("/dashboard", request.url);
     const redirectResponse = NextResponse.redirect(redirectUrl);
 
-    // Set access token
     redirectResponse.cookies.set("deriv_access_token", tokenData.access_token, {
       ...cookieOpts,
       maxAge: tokenData.expires_in || 3600,
     });
 
-    // Set refresh token with rotation
     if (tokenData.refresh_token) {
       redirectResponse.cookies.set("deriv_refresh_token", tokenData.refresh_token, {
         ...cookieOpts,
-        maxAge: 30 * 24 * 60 * 60, // 30 days
+        maxAge: 30 * 24 * 60 * 60,
       });
     }
 
-    // Set session marker for middleware (not httpOnly so middleware can read it)
     redirectResponse.cookies.set("deriv_session", "1", {
       httpOnly: false,
       secure: isProduction,
@@ -204,13 +232,13 @@ export async function GET(request: NextRequest) {
       path: "/",
     });
 
-    // Clear PKCE cookies
     redirectResponse.cookies.set("deriv_code_verifier", "", { maxAge: 0, path: "/" });
     redirectResponse.cookies.set("deriv_oauth_state", "", { maxAge: 0, path: "/" });
 
+    console.log("[Deriv Callback] Success! Token exchange complete.");
     return redirectResponse;
   } catch (err) {
-    console.error("OAuth callback error:", err);
+    console.error("[Deriv Callback] OAuth callback error:", err);
     return NextResponse.redirect(
       new URL("/login?error=callback_error", request.url)
     );
