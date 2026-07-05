@@ -78,6 +78,25 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#6366f1" />
         <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              name: "Sentienx",
+              url: "https://sentienx.omixsystems.store/",
+              description:
+                "Deriv trading platform with automated bots and live charts.",
+              publisher: {
+                "@type": "Organization",
+                name: "Omix Systems",
+                url: "https://omixsystems.store/",
+              },
+              applicationCategory: "FinanceApplication",
+            }),
+          }}
+        />
+        <script
           dangerouslySetInnerHTML={{
             __html: `
               if ('serviceWorker' in navigator) {
